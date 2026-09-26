@@ -3,744 +3,420 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QQQ + TQQQ 组合定投</title>
-<meta name="description" content="平时定投 QQQ，大跌时买 TQQQ，并把 TQQQ 控制在组合上限以内；另有按风险调杠杆（波动率目标 / 均线开关）：信号、回测和风险，每个美股交易日自动更新">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M5 23l6-5 4 3 4-8 3 5 5-11' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>纳指定投</title>
+<meta name="description" content="平时定投 QQQ，大跌时买 TQQQ，TQQQ 不超过上限：这周投多少、买什么、要不要卖，每个美股交易日自动更新">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='8' fill='%23151515'/%3E%3Cpath d='M6 19l5-4 4 3 7-9' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
-    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f1f0ec;
-    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
-    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11, 11, 11, 0.10);
-    --accent: #2a78d6; --accent-ink: #1c5cab; --focus: #2a78d6;
-    /* 图表系列颜色（色盲友好，已校验） */
-    --s-qqq: #75746f;      /* 普通定投·只买 QQQ */
-    --s-combo: #2a78d6;    /* 综合策略·只买 QQQ */
-    --s-fixed: #1baf7a;    /* 每次固定比例买 TQQQ */
-    --s-dip: #eb6834;      /* 大跌才买 TQQQ（本站主角） */
-    --s-steady: #4a3aa7;   /* 稳妥模式·宽基打底 */
-    --s-lever: #c0398a;    /* 按风险调杠杆（波动率目标 / 均线开关） */
-    --ramp-1: #86b6ef; --ramp-2: #5598e7; --ramp-3: #2a78d6; --ramp-4: #1c5cab; --ramp-5: #0d366b;
-    --zone: rgba(235, 104, 52, 0.13);
-    --warn-bg: #fdf3dc; --warn-border: #f0d58f; --warn-ink: #5c4200; --warn-icon: #fab219;
-    --risk-bg: #fbeae2; --risk-border: #efbda6; --risk-ink: #7a3413;
+    --page: #fbfaf7; --card: #ffffff; --soft: #f3f1ec; --hi: #eef2fc;
+    --ink: #151515; --ink-2: #55524c; --muted: #6f6b63;
+    --rule: #e6e2d9; --rule-2: #ece8df; --field: #d6d1c6;
+    --q: #2b63d9;          /* QQQ / 对照 */
+    --t: #d9602b;          /* TQQQ / 你的规则 */
+    --t-ink: #b84a1b;      /* TQQQ 文字 */
+    --base: #8a867d;       /* 只买 QQQ */
+    --good: #1f7a3d; --warn-bg: #fff4ee; --warn-line: #f0c7b3;
+    --btn: #151515; --btn-ink: #ffffff;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242423;
-      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
-      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
-      --accent: #3987e5; --accent-ink: #86b6ef; --focus: #6da7ec;
-      --s-qqq: #a3a29b; --s-combo: #3987e5; --s-fixed: #199e70; --s-dip: #d95926; --s-steady: #9085e9; --s-lever: #c0398a;
-      --ramp-1: #184f95; --ramp-2: #2a78d6; --ramp-3: #5598e7; --ramp-4: #86b6ef; --ramp-5: #b7d3f6;
-      --zone: rgba(217, 89, 38, 0.20);
-      --warn-bg: #2b2411; --warn-border: #5a4a1c; --warn-ink: #f3dfa8; --warn-icon: #fab219;
-      --risk-bg: #2e1409; --risk-border: #5f2c16; --risk-ink: #f3c4ab;
+      --page: #111110; --card: #1a1a19; --soft: #22221f; --hi: #1b2640;
+      --ink: #f2f0ea; --ink-2: #c4c0b6; --muted: #9a968c;
+      --rule: #2e2d29; --rule-2: #292824; --field: #45433d;
+      --q: #6d98f0; --t: #e8743f; --t-ink: #f09a6c; --base: #8f8b82;
+      --good: #5cc98a; --warn-bg: #2d1c13; --warn-line: #5e3522;
+      --btn: #f2f0ea; --btn-ink: #151515;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242423;
-    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
-    --accent: #3987e5; --accent-ink: #86b6ef; --focus: #6da7ec;
-    --s-qqq: #a3a29b; --s-combo: #3987e5; --s-fixed: #199e70; --s-dip: #d95926; --s-steady: #9085e9; --s-lever: #c0398a;
-    --ramp-1: #184f95; --ramp-2: #2a78d6; --ramp-3: #5598e7; --ramp-4: #86b6ef; --ramp-5: #b7d3f6;
-    --zone: rgba(217, 89, 38, 0.20);
-    --warn-bg: #2b2411; --warn-border: #5a4a1c; --warn-ink: #f3dfa8; --warn-icon: #fab219;
-    --risk-bg: #2e1409; --risk-border: #5f2c16; --risk-ink: #f3c4ab;
+    --page: #111110; --card: #1a1a19; --soft: #22221f; --hi: #1b2640;
+    --ink: #f2f0ea; --ink-2: #c4c0b6; --muted: #9a968c;
+    --rule: #2e2d29; --rule-2: #292824; --field: #45433d;
+    --q: #6d98f0; --t: #e8743f; --t-ink: #f09a6c; --base: #8f8b82;
+    --good: #5cc98a; --warn-bg: #2d1c13; --warn-line: #5e3522;
+    --btn: #f2f0ea; --btn-ink: #151515;
   }
 
   [hidden] { display: none !important; }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--page); color: var(--ink);
-    font: 15px/1.6 system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif; }
-  a { color: var(--accent-ink); }
-  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    font: 15px/1.6 "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; }
+  a { color: var(--q); }
+  :focus-visible { outline: 2px solid var(--q); outline-offset: 2px; }
+  h1, h2, h3, p { margin: 0; }
+  .num { font-family: Manrope, "PingFang SC", "Microsoft YaHei", sans-serif; font-variant-numeric: tabular-nums; }
 
-  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 16px 56px; }
-  h1, h2, h3 { margin: 0; line-height: 1.3; }
-  h1 { font-size: clamp(24px, 4vw, 30px); font-weight: 650; letter-spacing: -0.01em; }
-  h2 { font-size: 19px; font-weight: 620; }
-  h3 { font-size: 15px; font-weight: 620; }
-  p { margin: 0; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 16px 56px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; }
+  .brand svg rect { fill: var(--ink); } .brand svg path { stroke: var(--page); }
+  .meta { font-size: 13px; color: var(--muted); text-align: right; }
 
-  .eyebrow { color: var(--ink-2); font-size: 13px; margin-bottom: 4px; }
-  .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
-  .top { margin-bottom: 18px; }
+  .tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--rule); margin: 20px 0 32px; overflow-x: auto; scrollbar-width: none; }
+  .tabs button { font: inherit; font-size: 15px; color: var(--muted); background: none; border: 0; padding: 0 0 12px;
+    border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; white-space: nowrap; min-height: 44px; }
+  .tabs button[aria-selected="true"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
-  .block { margin-top: 36px; }
-  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
-  .sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
-  .small { font-size: 12px; color: var(--muted); }
-  .verdict { font-size: 16px; line-height: 1.75; margin-bottom: 14px; max-width: 760px; }
-  .verdict b { font-weight: 650; }
+  .notice { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
 
-  .notice { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-bg);
-    border: 1px solid var(--warn-border); color: var(--warn-ink); border-radius: 12px;
-    padding: 12px 14px; margin-bottom: 14px; font-size: 14px; }
-  .notice .icon { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--warn-icon);
-    color: #3a2a00; font-weight: 700; font-size: 13px; line-height: 20px; text-align: center; }
-  .risk-note { background: var(--risk-bg); border-color: var(--risk-border); color: var(--risk-ink); }
-  .risk-note .icon { background: var(--s-dip); color: #fff; }
+  .eyebrow { font-size: 14px; color: var(--muted); }
+  .headline { font-size: clamp(30px, 5.2vw, 44px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.28; margin-top: 10px; }
+  .lede { font-size: 16px; line-height: 1.75; color: var(--ink-2); margin-top: 12px; max-width: 760px; }
+  h2 { font-size: 18px; font-weight: 700; }
+  .h-page { font-size: clamp(26px, 4vw, 34px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; }
+  section + section { margin-top: 40px; }
+  .small { font-size: 13px; color: var(--muted); }
 
-  .settings { padding: 14px 16px; }
-  .settings-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
-  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-2); }
-  .field input, .field select, .tier-row input { font: inherit; font-size: 15px; color: var(--ink);
-    background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 7px 10px; min-height: 38px; }
-  .unit-input { display: flex; align-items: center; border: 1px solid var(--axis); border-radius: 8px; background: var(--surface); padding: 0 10px; }
-  .unit-input span { color: var(--muted); font-size: 15px; white-space: nowrap; }
-  .unit-input input { border: 0; width: 92px; padding: 7px 4px; background: transparent; font: inherit; font-size: 15px; color: var(--ink); min-height: 36px; }
-  .unit-input input.narrow { width: 58px; }
-  .unit-input:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
-  .unit-input input:focus-visible { outline: none; }
-  .check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
-  .check input { width: 18px; height: 18px; }
-  .btn { font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; background: var(--surface-2);
-    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; min-height: 38px; }
-  .btn:hover { border-color: var(--axis); }
-  .btn.primary { background: var(--ink); border-color: var(--ink); color: var(--surface); font-weight: 600; }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .link-btn { font: inherit; font-size: 13px; background: none; border: 0; color: var(--ink-2); text-decoration: underline; cursor: pointer; padding: 4px; }
-  .tier-editor { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--grid); }
-  .tier-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; font-size: 14px; color: var(--ink-2); }
-  .tier-row .sw { width: 10px; height: 22px; border-radius: 3px; flex: none; }
-  .tier-row input { width: 76px; min-height: 34px; padding: 5px 8px; }
-  .tier-row .rule-name { font-weight: 600; color: var(--ink); min-width: 5.5em; }
-  .tier-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+  .tile { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 20px 22px; display: flex; flex-direction: column; gap: 4px; }
+  .tile .k { font-size: 13px; color: var(--muted); }
+  .tile .v { font-size: 38px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+  .tile .s { font-size: 13px; color: var(--muted); }
+  .v.q { color: var(--q); } .v.t { color: var(--t-ink); }
 
-  /* 信号卡 */
-  .signal { margin-top: 14px; padding: 24px 22px 20px; }
-  .signal .label { color: var(--ink-2); font-size: 14px; }
-  .hero-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 2px; }
-  .hero { font-size: clamp(44px, 9vw, 60px); font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
-  .asset-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 17px; font-weight: 650;
-    border-radius: 999px; padding: 5px 14px; color: #fff; }
-  .asset-pill.q { background: var(--s-combo); }
-  .asset-pill.t { background: var(--s-dip); }
-  .sig-mult { font-size: 17px; font-weight: 600; }
-  .sig-explain { color: var(--ink-2); margin-top: 12px; max-width: 700px; }
-  .sig-foot { margin-top: 14px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
+  .cond { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .cond .row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+  .cond .row b { color: var(--ink); }
+  .cond .row span:last-child { color: var(--muted); text-align: right; }
+  .bar { height: 6px; border-radius: 3px; background: var(--rule-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--t); }
+  .ok-mark { color: var(--good); font-weight: 700; }
 
-  .conds { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-top: 16px; }
-  .cond { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; }
-  .cond .mark { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
-    font-size: 12px; font-weight: 700; color: #fff; background: var(--muted); margin-top: 1px; }
-  .cond.on .mark { background: var(--s-dip); }
-  .cond .ct { font-size: 13px; font-weight: 620; }
-  .cond .cs { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .ladder { margin-top: 12px; font-size: 14px; }
+  .ladder div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule-2); }
+  .ladder div:last-child { border-bottom: 0; }
+  .ladder span:first-child { color: var(--ink-2); }
+  .ladder span:last-child { font-weight: 600; white-space: nowrap; }
+  .ladder .now { background: var(--hi); border-radius: 8px; padding: 10px 12px; margin: 0 -12px; border-bottom-color: transparent; }
+  .ladder .now span { color: var(--ink); font-weight: 700; }
+  .ladder .tq { color: var(--t-ink); }
 
-  .sell-box { margin-top: 16px; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--surface-2); }
-  .sell-box.on { border-color: var(--risk-border); background: var(--risk-bg); color: var(--risk-ink); }
-  .sell-box .sh { font-size: 13px; color: var(--ink-2); }
-  .sell-box.on .sh { color: var(--risk-ink); }
-  .sell-box .sv { font-size: 19px; font-weight: 650; margin-top: 2px; }
-  .sell-box .sd { font-size: 13px; margin-top: 6px; }
-  .sell-box .sd + .sd { margin-top: 3px; }
+  .strip { background: var(--soft); border-radius: 16px; padding: 18px 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .strip .title { font-size: 15px; font-weight: 700; }
+  .strip .res { font-size: 14px; color: var(--ink-2); flex-basis: 100%; }
+  .strip .res b { color: var(--ink); }
+  .strip .res.sell b { color: var(--t-ink); }
+  label.inl { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); }
+  input, select, textarea { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--field); border-radius: 10px; }
+  input, select { height: 44px; padding: 0 12px; font-size: 15px; }
+  label.inl input { width: 110px; }
+  .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .field input, .field select { width: 100%; }
 
-  /* 图表 */
-  .chart { position: relative; width: 100%; }
-  .chart svg { display: block; overflow: visible; }
-  .chart .grid { stroke: var(--grid); stroke-width: 1; }
-  .chart .axis { stroke: var(--axis); stroke-width: 1; }
-  .chart .ref { stroke: var(--axis); stroke-width: 1; }
-  .chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .chart .ref-label { fill: var(--ink-2); font-size: 11px; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
-  .chart .end-label { fill: var(--ink-2); font-size: 12px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .key { display: inline-block; width: 14px; height: 2px; border-radius: 1px; flex: none; }
-  .key.area { height: 10px; width: 10px; border-radius: 2px; }
+  .btn { font: inherit; font-size: 14px; height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--field); background: var(--card); color: var(--ink); cursor: pointer; }
+  .btn.primary { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); font-weight: 700; font-size: 15px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .link { font: inherit; font-size: 13px; background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 4px; }
 
-  /* 表格 */
-  .table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  th:first-child, td:first-child { text-align: left; }
-  thead th { color: var(--ink-2); font-weight: 560; font-size: 13px; }
-  thead th .key { margin-right: 6px; vertical-align: middle; }
+  /* 回测 */
+  .bt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: right; padding: 14px 10px; border-bottom: 1px solid var(--rule-2); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; }
+  thead th { font-size: 13px; font-weight: 500; color: var(--muted); border-bottom-color: var(--rule); }
   tbody tr:last-child td { border-bottom: 0; }
-  tr.em td { font-weight: 650; background: var(--surface-2); }
-  td .note, th .note { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
-  td.label { color: var(--ink-2); white-space: normal; min-width: 110px; }
-  tr.em td.label { color: var(--ink); }
-  td.best { color: var(--ink); font-weight: 650; }
+  tr.mine td { font-weight: 700; background: var(--warn-bg); }
+  tr.mine td:first-child { padding-left: 12px; }
+  tr.dim td { color: var(--ink-2); }
+  .key { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 10px; }
+  .table-wrap { overflow-x: auto; }
+  .notes2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .note { background: var(--soft); border-radius: 16px; padding: 18px 22px; }
+  .note .k { font-size: 13px; color: var(--muted); }
+  .note p { font-size: 15px; line-height: 1.7; margin-top: 4px; }
 
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 14px 0; }
-  .tile { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; }
-  .tile .t-label { font-size: 12px; color: var(--ink-2); }
-  .tile .t-value { font-size: 22px; font-weight: 650; margin-top: 2px; line-height: 1.3; }
-  .tile .t-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  /* 回放 */
+  .player { background: var(--card); border: 1px solid var(--rule); border-radius: 20px; padding: 22px 22px 16px; }
+  .p-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .p-date { font-size: clamp(26px, 4.4vw, 36px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .p-sub { font-size: 13px; color: var(--muted); margin-top: 4px; min-height: 20px; }
+  .p-legend { display: flex; flex-direction: column; gap: 4px; font-size: 13px; min-width: 250px; }
+  .p-legend div { display: flex; align-items: center; gap: 8px; }
+  .p-legend .nm { color: var(--ink-2); flex-grow: 1; }
+  .p-legend .vv { font-weight: 700; font-size: 15px; min-width: 96px; text-align: right; }
+  .p-legend .iv { color: var(--muted); min-width: 92px; text-align: right; }
+  .p-chart { position: relative; margin-top: 10px; }
+  .p-chart svg { display: block; width: 100%; overflow: visible; }
+  .p-chart .grid { stroke: var(--rule-2); } .p-chart .axis { stroke: var(--field); }
+  .p-chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .p-chart .ev line { stroke: var(--field); stroke-dasharray: 3 4; }
+  .p-chart .ev text { fill: var(--muted); font-size: 11px; }
+  .p-cover { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--card) 55%, transparent); border-radius: 12px; }
+  .p-cover button { pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; font: inherit; font-size: 16px; font-weight: 700; height: 52px; padding: 0 22px;
+    border-radius: 999px; border: 0; background: var(--btn); color: var(--btn-ink); cursor: pointer; white-space: nowrap; box-shadow: 0 6px 24px rgba(0,0,0,.15); }
+  .p-ctrl { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .p-ctrl .play { width: 44px; height: 44px; border-radius: 22px; border: 0; background: var(--btn); color: var(--btn-ink); cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
+  .p-ctrl input[type=range] { flex-grow: 1; height: 44px; padding: 0; border: 0; background: none; accent-color: var(--t); }
+  .p-ctrl select { height: 36px; font-size: 13px; padding: 0 8px; }
 
-  .facts { margin: 0; padding: 0; list-style: none; }
-  .facts li { padding: 12px 0; border-bottom: 1px solid var(--grid); }
-  .facts li:last-child { border-bottom: 0; padding-bottom: 0; }
-  .facts li:first-child { padding-top: 0; }
-  .facts b { display: block; font-weight: 620; margin-bottom: 2px; }
-  .facts span { color: var(--ink-2); }
+  /* 记录 */
+  .form5 { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px 20px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: end; margin-top: 16px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+  .kpi { border-top: 2px solid var(--ink); padding-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+  .kpi .k { font-size: 13px; color: var(--muted); } .kpi .v { font-size: 26px; font-weight: 700; } .kpi .s { font-size: 12px; color: var(--muted); }
+  .empty { border: 1px dashed var(--field); border-radius: 16px; padding: 40px 20px; text-align: center; margin-top: 20px; }
+  .empty b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .empty span { font-size: 14px; color: var(--muted); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; border-radius: 4px; padding: 1px 6px; background: var(--q); }
+  .tag.t { background: var(--t); } .tag.s { background: var(--base); }
+  td .sub { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+  textarea { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 10px; margin-top: 12px; resize: vertical; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 
-  details.card > summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  details.card > summary::-webkit-details-marker { display: none; }
-  details.card > summary::after { content: "展开"; font-weight: 400; font-size: 13px; color: var(--ink-2); }
-  details[open].card > summary::after { content: "收起"; }
-  details.card[open] > summary { margin-bottom: 12px; }
+  /* 设置 */
+  .panel { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 22px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  details { margin-top: 16px; }
+  details > summary { cursor: pointer; font-weight: 600; font-size: 14px; min-height: 32px; }
+  .tier-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; font-size: 14px; color: var(--ink-2); }
+  .tier-row input { width: 80px; height: 38px; }
+  .facts > div { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+  .facts > div:last-child { border-bottom: 0; }
+  .facts b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .facts span { font-size: 14px; line-height: 1.7; color: var(--ink-2); }
 
-  .plan-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 14px; }
-  .plan-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
-  .plan-choice { font: inherit; text-align: left; cursor: pointer; color: var(--ink); background: var(--surface);
-    border: 1px solid var(--axis); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
-  .plan-choice[aria-checked="true"] { border: 2px solid var(--ink); padding: 11px 13px; background: var(--surface-2); }
-  .plan-choice .pc-label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
-  .plan-choice[aria-checked="true"] .pc-label::after { content: " · 已选"; color: var(--ink); }
-  .plan-choice .pc-amount { font-size: clamp(26px, 6vw, 36px); font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; font-variant-numeric: tabular-nums; }
-  .plan-choice .pc-sub { font-size: 12px; color: var(--ink-2); }
-  .plan-notes { margin: 12px 0 0; padding-left: 18px; }
-  .plan-notes li + li { margin-top: 2px; }
-  .plan-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+  footer { margin-top: 48px; font-size: 12px; color: var(--muted); line-height: 1.7; }
 
-  .bar-track { height: 22px; border-radius: 6px; background: var(--surface-2); overflow: hidden; display: flex; margin-top: 10px; }
-  .bar-track i { display: block; height: 100%; }
-  .bar-track .q { background: var(--s-combo); }
-  .bar-track .t { background: var(--s-dip); }
-  .bar-track .c { background: var(--s-steady); }
-  .bar-track .k { background: var(--muted); }
-  .bar-track i + i:not(.cap) { box-shadow: inset 2px 0 0 var(--surface); }
-  .asset-pill.l { background: var(--s-lever); }
-  .tag.k { background: var(--muted); }
-  .lev-weights { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 14px; color: var(--ink-2); }
-  .lev-weights b { color: var(--ink); font-variant-numeric: tabular-nums; }
-
-  textarea.backup { width: 100%; box-sizing: border-box; margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px; line-height: 1.5; color: var(--ink); background: var(--surface); border: 1px solid var(--axis);
-    border-radius: 8px; padding: 10px; resize: vertical; }
-  .tag { display: inline-block; font-size: 11px; font-weight: 650; color: #fff; border-radius: 4px; padding: 1px 6px; }
-  .tag.q { background: var(--s-combo); }
-  .tag.t { background: var(--s-dip); }
-  .tag.s { background: var(--s-steady); }
-  .bar-track .cap { width: 2px; background: var(--ink); }
-
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
-  footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: center; }
-  .empty ol { margin: 10px 0 0; padding-left: 20px; }
-
-  @media (max-width: 560px) {
-    .card { padding: 16px; border-radius: 12px; }
-    .signal { padding: 20px 16px 16px; }
-    .plan-choices { grid-template-columns: 1fr; }
-    th, td { padding: 8px 8px; font-size: 13px; }
+  @media (max-width: 760px) {
+    .wrap { padding-top: 20px; }
+    .tabs { gap: 20px; margin: 16px 0 24px; }
+    .tiles { grid-template-columns: 1fr; gap: 0; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; }
+    .tile { flex-direction: row; justify-content: space-between; align-items: center; border: 0; border-bottom: 1px solid var(--rule-2); border-radius: 0; padding: 14px 18px; background: none; }
+    .tile:last-child { border-bottom: 0; }
+    .tile .v { font-size: 22px; order: 2; } .tile .s { display: none; }
+    .two, .notes2 { grid-template-columns: 1fr; gap: 32px; }
+    .notes2 { gap: 12px; }
+    .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .form5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .form5 .btn { grid-column: span 2; }
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .player { padding: 16px 14px 12px; border-radius: 16px; }
+    .p-legend { min-width: 0; width: 100%; }
+    th, td { padding: 12px 8px; font-size: 14px; }
+    label.inl input { width: 96px; }
+    .strip .title { flex-basis: 100%; }
+    .strip label.inl { flex: 1 1 40%; } .strip label.inl input { width: 100%; min-width: 0; }
+    #btTable th:nth-child(2), #btTable td:nth-child(2), #btTable th:nth-child(3), #btTable td:nth-child(3) { display: none; }
+    #btTable td:first-child { white-space: normal; }
   }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <p class="eyebrow">QQQ + TQQQ · <span id="ebFreq">每周定投</span> · 大跌才买 TQQQ</p>
-    <h1>QQQ + TQQQ 组合定投</h1>
-    <p class="meta" id="meta">正在读取行情数据…</p>
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8"></rect><path d="M6 19l5-4 4 3 7-9" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      纳指定投
+    </div>
+    <div class="meta" id="meta">正在读取行情…</div>
   </header>
 
-  <div id="notice" class="notice" role="status" hidden><span class="icon" aria-hidden="true">!</span><span id="noticeText"></span></div>
+  <nav class="tabs" role="tablist" aria-label="页面">
+    <button role="tab" id="tab-home" aria-controls="p-home" aria-selected="true">本周怎么投</button>
+    <button role="tab" id="tab-backtest" aria-controls="p-backtest" aria-selected="false">回测</button>
+    <button role="tab" id="tab-records" aria-controls="p-records" aria-selected="false">我的记录</button>
+    <button role="tab" id="tab-settings" aria-controls="p-settings" aria-selected="false">设置与说明</button>
+  </nav>
 
-  <section class="card empty" id="empty" hidden>
-    <h2>还没有行情数据</h2>
-    <ol>
-      <li>打开仓库的 <b>Actions</b> 页面</li>
-      <li>点左边的「每日更新数据并发布网站」，再点右边的 <b>Run workflow</b></li>
-      <li>等 2–3 分钟出现绿色对勾，再刷新这个页面</li>
-    </ol>
-  </section>
+  <div class="notice" id="notice" role="status" hidden></div>
+  <div class="notice" id="empty" hidden>还没有行情数据。数据每个美股交易日收盘后自动更新，稍后再打开看看。</div>
 
-  <div id="app" hidden>
-    <div class="notice risk-note" role="note">
-      <span class="icon" aria-hidden="true">!</span>
-      <span>TQQQ 是<b>每日 3 倍杠杆</b>，只适合小仓位、在大跌时用。1999 年一次性买入并一直拿着，到现在只有 <b id="riskMult">—</b> 倍，同期 QQQ 是 <b id="riskQ">—</b> 倍，因为从 2000 年的高点一路跌到 2009 年，它最多跌掉 <b id="riskDD">—</b>，跌完就再也涨不回来了。所以这套规则一定要配合占比上限。</span>
-    </div>
-
-    <section class="card settings" aria-label="我的设置">
-      <div class="settings-row">
-        <label class="field">每次基础金额
-          <span class="unit-input"><span>$</span><input id="baseAmount" type="number" min="1" step="10" inputmode="decimal"></span>
-        </label>
-        <label class="field">多久投一次
-          <select id="frequency">
-            <option value="weekly">每周一次</option>
-            <option value="daily">每个交易日</option>
-          </select>
-        </label>
-        <label class="field" id="weekdayField">星期几
-          <select id="investWeekday">
-            <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
-            <option value="4">周四</option><option value="5">周五</option>
-          </select>
-        </label>
-        <label class="field">回撤跟谁比
-          <select id="basis">
-            <option value="52w">近一年最高点</option>
-            <option value="ath">历史最高点</option>
-          </select>
-        </label>
+  <!-- ============ 本周怎么投 ============ -->
+  <main id="p-home" role="tabpanel" aria-labelledby="tab-home" hidden>
+    <section>
+      <p class="eyebrow" id="hDate">下一次定投</p>
+      <h1 class="headline" id="hHead">—</h1>
+      <p class="lede" id="hLede"></p>
+      <div class="tiles">
+        <div class="tile"><span class="k">投多少</span><span class="v num" id="tAmt">—</span><span class="s" id="tAmtS"></span></div>
+        <div class="tile"><span class="k">买什么</span><span class="v num" id="tAsset">—</span><span class="s" id="tAssetS"></span></div>
+        <div class="tile"><span class="k">要不要卖 TQQQ</span><span class="v" id="tSell">—</span><span class="s" id="tSellS"></span></div>
       </div>
-      <div class="settings-row" style="margin-top:14px">
-        <label class="field">跌破均线且回撤≥多少才买 TQQQ
-          <span class="unit-input"><input id="dipThreshold" class="narrow" type="number" min="0" max="60" step="1" inputmode="decimal"><span>%</span></span>
-        </label>
-        <label class="field">TQQQ 占组合上限
-          <span class="unit-input"><input id="tqqqCap" class="narrow" type="number" min="0" max="100" step="1" inputmode="decimal"><span>%</span></span>
-        </label>
-        <label class="field">触发时这次的钱有多少买 TQQQ
-          <span class="unit-input"><input id="flowShare" class="narrow" type="number" min="0" max="100" step="5" inputmode="decimal"><span>%</span></span>
-        </label>
-        <div class="plan-form" style="margin-bottom:10px">
-          <label class="field">什么时候卖 TQQQ
-            <select id="sellMode">
-              <option value="cap">只守占比上限，不择时卖</option>
-              <option value="ma">涨回 200 日均线就全换回 QQQ</option>
-              <option value="peak">涨回前高附近就减到目标比例</option>
-              <option value="none">完全不卖（连上限也不管）</option>
+    </section>
+
+    <section class="two">
+      <div>
+        <h2>离买 TQQQ 还差多远</h2>
+        <div class="cond" id="c1"></div>
+        <div class="cond" id="c2"></div>
+        <p class="small" style="margin-top:14px">两个条件都满足，那次的钱才改买 TQQQ。</p>
+      </div>
+      <div>
+        <h2>什么时候会投得不一样</h2>
+        <div class="ladder" id="ladder"></div>
+      </div>
+    </section>
+
+    <section class="strip">
+      <span class="title">我的持仓</span>
+      <label class="inl">QQQ <input id="hQ" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"> 股</label>
+      <label class="inl">TQQQ <input id="hT" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"> 股</label>
+      <p class="res" id="holdRes">填上股数，就告诉你 TQQQ 占多少、要不要卖几股。只存在你的浏览器里。</p>
+    </section>
+  </main>
+
+  <!-- ============ 回测 ============ -->
+  <main id="p-backtest" role="tabpanel" aria-labelledby="tab-backtest" hidden>
+    <section>
+      <div class="bt-head">
+        <h1 class="h-page" id="btTitle">每周投 $100，从 1999 年投到今天</h1>
+        <label class="inl">从 <select id="btYear"></select> 开始</label>
+      </div>
+      <p class="lede" id="btLede"></p>
+    </section>
+
+    <section class="player" aria-label="定投回放">
+      <div class="p-top">
+        <div>
+          <div class="p-date num" id="pDate">—</div>
+          <div class="p-sub" id="pEvent"></div>
+        </div>
+        <div class="p-legend" id="pLegend"></div>
+      </div>
+      <div class="p-chart" id="pChart">
+        <svg id="pSvg" role="img" aria-label="三种做法的账户市值随时间变化"></svg>
+        <div class="p-cover" id="pCover"><button type="button" id="pStart"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg><span id="pStartText">播放 27 年回放</span></button></div>
+      </div>
+      <div class="p-ctrl">
+        <button type="button" class="play" id="pPlay" aria-label="播放"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" id="pIcon"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg></button>
+        <input type="range" id="pSeek" min="0" max="1000" value="1000" aria-label="回放进度">
+        <select id="pSpeed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+      </div>
+    </section>
+
+    <section>
+      <div class="table-wrap">
+        <table id="btTable">
+          <thead><tr><th scope="col">做法</th><th scope="col">投入</th><th scope="col">现在市值</th><th scope="col">年化</th><th scope="col">最大回撤</th><th scope="col">最惨时剩</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="notes2">
+      <div class="note"><span class="k">换个年代还成立吗</span><p id="rollText">—</p></div>
+      <div class="note"><span class="k">为什么放一条对照</span><p id="cmpText">—</p></div>
+    </section>
+  </main>
+
+  <!-- ============ 我的记录 ============ -->
+  <main id="p-records" role="tabpanel" aria-labelledby="tab-records" hidden>
+    <section>
+      <h1 class="h-page">我的持仓</h1>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-top:14px">
+        <label class="field" style="width:180px">QQQ 股数<input id="rQ" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+        <label class="field" style="width:180px">TQQQ 股数<input id="rT" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+        <p class="small" style="padding-bottom:12px">填上以后，首页会直接算 TQQQ 占多少、要不要卖几股。</p>
+      </div>
+    </section>
+
+    <section>
+      <div class="bt-head">
+        <h1 class="h-page">买入记录</h1>
+        <div class="actions" style="margin-top:0">
+          <button class="btn" id="jBackup" type="button">备份到邮箱</button>
+          <button class="btn" id="jPaste" type="button">粘贴导入</button>
+        </div>
+      </div>
+      <div class="form5">
+        <label class="field">日期<input id="jDate" type="date"></label>
+        <label class="field">买了什么<select id="jAsset"><option value="QQQ">QQQ</option><option value="TQQQ">TQQQ</option></select></label>
+        <label class="field">花了多少（$）<input id="jAmount" type="number" min="0" step="10" inputmode="decimal"></label>
+        <label class="field">成交价（$）<input id="jPrice" type="number" min="0" step="0.01" inputmode="decimal"></label>
+        <button class="btn primary" id="jAdd" type="button">记一笔</button>
+      </div>
+      <p class="small" id="jHint" style="margin-top:8px"></p>
+      <p class="small" id="jMsg" role="status" style="margin-top:4px;color:var(--ink)"></p>
+
+      <div id="jBox" hidden>
+        <textarea id="jText" rows="7" spellcheck="false"></textarea>
+        <label class="field" id="jMailField" style="margin-top:10px;max-width:360px">备份发到哪个邮箱<input id="jEmail" type="email" inputmode="email" placeholder="you@example.com"></label>
+        <div class="actions">
+          <button class="btn primary" id="jDoImport" type="button">导入这些记录</button>
+          <a class="btn" id="jMail" href="#" style="display:inline-flex;align-items:center;text-decoration:none">用邮件发给自己</a>
+          <button class="btn" id="jCopy" type="button">复制</button>
+          <button class="btn" id="jClose" type="button">关闭</button>
+        </div>
+      </div>
+
+      <div id="jResult" hidden>
+        <div class="kpis" id="jKpis"></div>
+        <div class="table-wrap" style="margin-top:20px">
+          <table id="jTable">
+            <thead><tr><th scope="col">日期</th><th scope="col">买了什么</th><th scope="col">金额</th><th scope="col">成交价</th><th scope="col">股数</th><th scope="col">当时规则说</th><th scope="col"><span style="position:absolute;left:-9999px">操作</span></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="empty" id="jEmpty"><b>还没有记录</b><span>每次实际买完记一笔，这里会算出真实成本和收益，并对照当天规则说该买什么。记录只存在这台设备的浏览器里，记得偶尔备份到邮箱。</span></div>
+    </section>
+  </main>
+
+  <!-- ============ 设置与说明 ============ -->
+  <main id="p-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <section>
+      <h1 class="h-page">设置</h1>
+      <div class="panel" style="margin-top:16px">
+        <div class="grid4">
+          <label class="field">每次基础金额（$）<input id="baseAmount" type="number" min="1" step="10" inputmode="decimal"></label>
+          <label class="field">多久投一次
+            <select id="when">
+              <option value="w1">每周一</option><option value="w2">每周二</option><option value="w3">每周三</option>
+              <option value="w4">每周四</option><option value="w5">每周五</option><option value="daily">每个交易日</option>
             </select>
           </label>
-          <label class="field" id="peakWithinField">离前高不到
-            <span class="unit-input"><input id="sellPeakWithin" class="narrow" type="number" min="0" max="30" step="1" inputmode="decimal"><span>%</span></span>
-          </label>
-          <label class="field" id="peakTargetField">就减到
-            <span class="unit-input"><input id="sellTargetShare" class="narrow" type="number" min="0" max="100" step="5" inputmode="decimal"><span>%</span></span>
-          </label>
+          <label class="field">跌多少才买 TQQQ（%）<input id="dipThreshold" type="number" min="0" max="60" step="1" inputmode="decimal"></label>
+          <label class="field">TQQQ 最多占（%）<input id="tqqqCap" type="number" min="0" max="100" step="1" inputmode="decimal"></label>
         </div>
-      </div>
-      <div class="tier-editor">
-        <h3>跌破 200 日均线之后，这次投多少倍</h3>
-        <div id="tiers"></div>
-        <div class="tier-actions">
-          <button class="btn ghost" id="resetCfg" type="button">恢复默认设置</button>
-          <span class="small" id="cfgNote"></span>
-        </div>
-      </div>
-      <p class="small">设置只存在你自己的浏览器里，不会上传。涨太多（比均线高 <span id="hotAboveText">15</span>%）时投 <span id="hotMultText">0.5</span> 倍。</p>
-    </section>
-
-    <section class="card signal" aria-labelledby="sigTitle">
-      <h2 id="sigTitle" class="label">下一次（<span id="sigDate">—</span>）该怎么投</h2>
-      <div class="hero-row">
-        <div class="hero" id="sigAmount">—</div>
-        <span class="asset-pill q" id="sigAsset">买 QQQ</span>
-        <div class="sig-mult" id="sigMult"></div>
-      </div>
-      <p class="sig-explain" id="sigExplain"></p>
-      <div class="conds" id="sigConds"></div>
-      <div class="sell-box" id="sellBox">
-        <div class="sh">要不要卖 TQQQ</div>
-        <div class="sv" id="sellVerdict">—</div>
-        <div class="sd" id="sellNote"></div>
-        <div class="sd" id="sellHow"></div>
-      </div>
-      <p class="sig-foot small" id="sigFoot"></p>
-    </section>
-
-    <section class="block" aria-labelledby="zoneTitle">
-      <div class="section-head">
-        <div><h2 id="zoneTitle">什么时候会买 TQQQ</h2>
-          <p class="sub">橙色区间 = 跌破 200 日均线且离<span id="basisWord">近一年最高点</span>跌够多，这些时候的钱买 TQQQ</p></div>
-      </div>
-      <div class="card">
-        <div class="legend">
-          <span><i class="key" style="background:var(--s-qqq)"></i>QQQ 离最高点跌了多少</span>
-          <span><i class="key area" style="background:var(--zone)"></i>买 TQQQ 的时段</span>
-        </div>
-        <div class="chart" id="zoneChart"></div>
-        <p class="small" id="zoneNote"></p>
-      </div>
-    </section>
-
-    <section class="block" aria-labelledby="btTitle">
-      <div class="section-head">
-        <div><h2 id="btTitle">五种做法一起回测</h2>
-          <p class="sub">每次都投同样的基础金额，按各自规则加码，从 <span id="btStart">—</span> 投到 <span id="btEnd">—</span></p></div>
-        <label class="field" style="flex-direction:row;align-items:center;gap:8px">从哪年开始
-          <select id="btYear"></select>
-        </label>
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table id="btTable">
-            <thead>
-              <tr>
-                <th scope="col">做法</th><th scope="col">总投入</th><th scope="col">现在市值</th>
-                <th scope="col">年化</th><th scope="col">最大回撤</th>
-                <th scope="col">最惨时<span class="note">市值/投入</span></th>
-                <th scope="col">现在 TQQQ<span class="note">占组合</span></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <p class="small" id="btNote"></p>
-      </div>
-      <div class="card" style="margin-top:14px">
-        <div class="legend" id="curveLegend"></div>
-        <div class="chart" id="curveChart"></div>
-        <p class="small">纵轴是「市值 ÷ 已投入的钱」，1 倍就是不赚不亏。用这个比看绝对金额公平，因为几种做法投进去的钱不一样多。</p>
-      </div>
-      <div class="card" style="margin-top:14px">
-        <div class="legend"><span><i class="key area" style="background:var(--s-dip)"></i>TQQQ 占组合的比例（大跌才买）</span><span><i class="key" style="background:var(--ink-2)"></i>你设的上限</span></div>
-        <div class="chart" id="shareChart"></div>
-        <p class="small" id="shareNote"></p>
-      </div>
-      <div class="card" style="margin-top:14px">
-        <div class="legend"><span>四种卖出规则，其他设置完全一样</span></div>
-        <div class="table-wrap">
-          <table id="sellTable">
-            <thead>
-              <tr>
-                <th scope="col">什么时候卖</th><th scope="col">年化</th><th scope="col">最大回撤</th>
-                <th scope="col">最惨时<span class="note">市值/投入</span></th>
-                <th scope="col">平均 TQQQ<span class="note">占组合</span></th>
-                <th scope="col">动手次数</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <p class="small" id="sellTableNote"></p>
-      </div>
-    </section>
-
-    <section class="block" aria-labelledby="lvTitle" id="lever">
-      <div class="section-head">
-        <div><h2 id="lvTitle">另一种做法：按风险调杠杆</h2>
-          <p class="sub">每次投一样多、不加码，只调 QQQ、TQQQ、现金三者的比例：纳指风平浪静时多拿杠杆，风大时少拿</p></div>
-      </div>
-      <div class="card settings">
-        <div class="settings-row">
-          <label class="field">用哪种信号
-            <select id="lvKind">
-              <option value="vol">波动率目标（推荐）</option>
-              <option value="ma">均线开关</option>
-            </select>
-          </label>
-          <label class="field lv-vol">目标波动
-            <span class="unit-input"><input id="lvTarget" class="narrow" type="number" min="5" max="80" step="5" inputmode="decimal"><span>%</span></span>
-          </label>
-          <label class="field lv-vol">杠杆上限
-            <span class="unit-input"><input id="lvMax" class="narrow" type="number" min="0.5" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
-          </label>
-          <label class="field lv-vol">杠杆下限
-            <span class="unit-input"><input id="lvMin" class="narrow" type="number" min="0" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
-          </label>
-          <label class="field lv-ma">均线上方
-            <span class="unit-input"><input id="lvOn" class="narrow" type="number" min="0" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
-          </label>
-          <label class="field lv-ma">均线下方
-            <span class="unit-input"><input id="lvOff" class="narrow" type="number" min="0" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
-          </label>
-          <label class="field lv-ma">缓冲带
-            <span class="unit-input"><span>±</span><input id="lvBuf" class="narrow" type="number" min="0" max="15" step="0.5" inputmode="decimal"><span>%</span></span>
-          </label>
-          <label class="field">偏离多少才调仓
-            <span class="unit-input"><input id="lvBand" class="narrow" type="number" min="1" max="100" step="5" inputmode="decimal"><span>%</span></span>
-          </label>
-          <button class="btn ghost" id="lvReset" type="button">恢复默认</button>
-        </div>
-        <p class="small" id="lvRule" style="margin-top:10px"></p>
-      </div>
-
-      <div class="card signal" style="margin-top:14px">
-        <h3 class="label">下一次（<span id="lvDate">—</span>）该配成</h3>
-        <div class="hero-row">
-          <div class="hero" id="lvHero">—</div>
-          <span class="asset-pill l" id="lvPill">杠杆</span>
-        </div>
-        <div class="bar-track" id="lvBar" aria-hidden="true"></div>
-        <div class="lev-weights" id="lvWeights"></div>
-        <p class="sig-explain" id="lvExplain"></p>
-        <div class="conds" id="lvConds"></div>
-        <div class="plan-form" style="margin-top:16px">
-          <label class="field">QQQ 股数
-            <span class="unit-input"><input id="lvQ" type="number" min="0" step="0.01" inputmode="decimal"><span>股</span></span>
-          </label>
-          <label class="field">TQQQ 股数
-            <span class="unit-input"><input id="lvT" type="number" min="0" step="0.01" inputmode="decimal"><span>股</span></span>
-          </label>
-          <label class="field">留着的现金
-            <span class="unit-input"><span>$</span><input id="lvC" type="number" min="0" step="10" inputmode="decimal"></span>
-          </label>
-        </div>
-        <div class="sell-box" id="lvBox">
-          <div class="sh">这次的钱怎么分、要不要调仓</div>
-          <div class="sv" id="lvVerdict">—</div>
-          <div class="sd" id="lvHow"></div>
-          <div class="sd" id="lvHow2"></div>
-        </div>
-        <p class="sig-foot small">股数、现金只存在你自己的浏览器里，和下面「我的持仓」共用。信号用的是上一个交易日的收盘价。</p>
-      </div>
-
-      <div class="card" style="margin-top:14px">
-        <p class="verdict" id="lvVerdictBt" style="font-size:15px"></p>
-        <div class="table-wrap">
-          <table id="lvTable">
-            <thead>
-              <tr>
-                <th scope="col">做法</th><th scope="col">投入</th><th scope="col">现在市值</th><th scope="col">年化</th>
-                <th scope="col">最大回撤</th><th scope="col">最惨时<span class="note">市值/投入</span></th>
-                <th scope="col">每年调仓</th><th scope="col">平均杠杆</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <p class="small" id="lvTableNote"></p>
-      </div>
-
-      <div class="card" style="margin-top:14px">
-        <div class="legend" id="lvCurveLegend"></div>
-        <div class="chart" id="lvCurveChart"></div>
-        <p class="small">纵轴是「市值 ÷ 已经投进去的钱」，1x 以下就是账面亏损。</p>
-      </div>
-
-      <div class="card" style="margin-top:14px">
-        <div class="legend"><span><i class="key area" style="background:var(--s-lever);opacity:.45"></i>实际杠杆（组合里 QQQ + 3 × TQQQ 占多少）</span></div>
-        <div class="chart" id="lvLevChart"></div>
-        <p class="small" id="lvLevNote"></p>
-      </div>
-
-      <div class="card" style="margin-top:14px">
-        <ul class="facts" id="lvFacts"></ul>
-      </div>
-    </section>
-
-    <section class="block" aria-labelledby="anTitle">
-      <div class="section-head">
-        <div><h2 id="anTitle">每年固定投一笔会怎样</h2>
-          <p class="sub">按当年人民币兑美元的年平均价换成美元。四种做法每年投进去的钱完全一样，区别只是怎么分配</p></div>
-      </div>
-      <div class="card">
-        <div class="plan-form">
-          <label class="field">每年投
-            <span class="unit-input"><span>¥</span><input id="anAmount" type="number" min="1000" step="10000" inputmode="decimal"></span>
-          </label>
-          <label class="field">从哪年开始
-            <select id="anYear"></select>
-          </label>
-        </div>
-        <p class="verdict" id="anVerdict" style="font-size:15px"></p>
-        <div class="table-wrap">
-          <table id="anTable">
-            <thead>
-              <tr>
-                <th scope="col">做法</th><th scope="col">总投入</th><th scope="col">现在市值</th>
-                <th scope="col">年化<span class="note">人民币</span></th>
-                <th scope="col">年化<span class="note">美元</span></th>
-                <th scope="col">最大回撤</th>
-                <th scope="col">最惨时<span class="note">市值/投入</span></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <ul class="small plan-notes" id="anNotes"></ul>
-      </div>
-    </section>
-
-    <section class="block" aria-labelledby="stTitle">
-      <div class="section-head">
-        <div><h2 id="stTitle">稳妥模式：宽基打底，不择时</h2>
-          <p class="sub">不看行情、不加码，每次都投一样多，按固定配比分给三层，定期再平衡</p></div>
-      </div>
-      <div class="card" id="stNoData" hidden>
-        <p>行情数据里还没有 SPY，稳妥模式要等下一次自动更新（每个交易日收盘后）才能算。</p>
-      </div>
-      <div id="stWrap" hidden>
-        <div class="card">
-          <div class="plan-form">
-            <label class="field">SPY 标普500<span class="note">核心打底</span>
-              <span class="unit-input"><input id="stCore" class="narrow" type="number" min="0" max="100" step="5" inputmode="decimal"><span>%</span></span>
+        <details>
+          <summary>更多设置：回撤跟谁比、加码倍数、卖出方式</summary>
+          <div class="grid4" style="margin-top:14px">
+            <label class="field">回撤跟谁比
+              <select id="basis"><option value="52w">近一年最高点</option><option value="ath">历史最高点</option></select>
             </label>
-            <label class="field">QQQ 纳指100<span class="note">成长卫星</span>
-              <span class="unit-input"><input id="stQ" class="narrow" type="number" min="0" max="100" step="5" inputmode="decimal"><span>%</span></span>
-            </label>
-            <label class="field">TQQQ<span class="note">杠杆</span>
-              <span class="unit-input"><input id="stT" class="narrow" type="number" min="0" max="100" step="5" inputmode="decimal"><span>%</span></span>
-            </label>
-            <label class="field">多久再平衡一次
-              <select id="stReb">
-                <option value="yearly">每年一次</option>
-                <option value="band">偏离超过阈值才动</option>
-                <option value="never">只用新钱补，从不卖</option>
+            <label class="field">触发时买 TQQQ 的比例（%）<input id="flowShare" type="number" min="0" max="100" step="5" inputmode="decimal"></label>
+            <label class="field">怎么卖 TQQQ
+              <select id="sellMode">
+                <option value="cap">只守上限（推荐）</option>
+                <option value="ma">涨回均线全卖</option>
+                <option value="peak">回到前高附近减仓</option>
+                <option value="none">完全不卖（危险）</option>
               </select>
             </label>
-            <label class="field" id="stBandField">偏离多少才动
-              <span class="unit-input"><input id="stBand" class="narrow" type="number" min="1" max="30" step="1" inputmode="decimal"><span>个点</span></span>
+            <label class="field" id="peakField">离前高不到（%）就减到（%）
+              <span style="display:flex;gap:8px"><input id="sellPeakWithin" type="number" min="0" max="30" step="1" aria-label="离前高不到多少"><input id="sellTargetShare" type="number" min="0" max="100" step="5" aria-label="减到多少"></span>
             </label>
-            <button class="btn ghost" id="stReset" type="button">恢复 60 / 30 / 10</button>
           </div>
-          <p class="small" id="stWeightNote"></p>
-        </div>
-        <div class="card" style="margin-top:14px">
-          <p class="verdict" id="stVerdict" style="font-size:15px"></p>
-          <div class="tiles" id="stTiles"></div>
-          <div class="bar-track" id="stBar"></div>
-          <p class="small" id="stBarNote"></p>
-        </div>
-        <div class="card" style="margin-top:14px">
-          <div class="legend"><span><i class="key" style="background:var(--s-steady)"></i>这次的 <b id="stAmt">—</b> 怎么分</span></div>
-          <div class="tiles" id="stPlanTiles"></div>
-          <p class="small" id="stPlanNote"></p>
-        </div>
-        <div class="card" style="margin-top:14px">
-          <ul class="facts" id="stFacts"></ul>
+          <p class="small" style="margin-top:16px">跌破均线后按回撤加码：</p>
+          <div id="tiers"></div>
+        </details>
+        <div class="actions" style="margin-top:18px">
+          <button class="btn" id="resetCfg" type="button">恢复默认</button>
+          <span class="small" id="cfgNote" role="status"></span>
         </div>
       </div>
+      <p class="small" style="margin-top:10px">设置只存在你的浏览器里。定投日提醒邮件按默认设置（每周一 $100）计算。</p>
     </section>
 
-    <section class="block" aria-labelledby="rollTitle">
-      <div class="section-head">
-        <div><h2 id="rollTitle">换个年代还成立吗</h2>
-          <p class="sub">每年 1 月开始投 10 年，看年化收益率和最大回撤</p></div>
-      </div>
-      <div class="card">
-        <p class="verdict" id="rollVerdict"></p>
-        <div class="table-wrap">
-          <table id="rollTable">
-            <thead><tr><th scope="col">开始年份</th><th scope="col">只买 QQQ<span class="note">综合策略</span></th><th scope="col">大跌才买 TQQQ</th><th scope="col">差</th><th scope="col">最大回撤<span class="note">只买 QQQ</span></th><th scope="col">最大回撤<span class="note">组合</span></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
+    <section>
+      <h1 class="h-page">用之前要知道</h1>
+      <div class="facts" id="facts" style="margin-top:6px"></div>
     </section>
+  </main>
 
-    <section class="block" aria-labelledby="riskTitle">
-      <div class="section-head"><h2 id="riskTitle">用之前一定要知道</h2></div>
-      <div class="card"><ul class="facts" id="facts"></ul></div>
-    </section>
-
-    <section class="block" aria-labelledby="holdTitle">
-      <div class="section-head">
-        <div><h2 id="holdTitle">我的持仓：要不要再平衡</h2>
-          <p class="sub">填上你现在有多少股，算出 TQQQ 占比，超过上限就提示你换回 QQQ</p></div>
-      </div>
-      <div class="card">
-        <div class="plan-form">
-          <label class="field">SPY 股数
-            <span class="unit-input"><input id="hS" type="number" min="0" step="0.01" inputmode="decimal"><span>股</span></span>
-          </label>
-          <label class="field">QQQ 股数
-            <span class="unit-input"><input id="hQ" type="number" min="0" step="0.01" inputmode="decimal"><span>股</span></span>
-          </label>
-          <label class="field">TQQQ 股数
-            <span class="unit-input"><input id="hT" type="number" min="0" step="0.01" inputmode="decimal"><span>股</span></span>
-          </label>
-        </div>
-        <div id="holdResult" hidden>
-          <div class="bar-track" id="holdBar"></div>
-          <div class="tiles" id="holdTiles"></div>
-          <p class="verdict" id="holdVerdict" style="font-size:15px"></p>
-        </div>
-        <p class="small">股数只存在你自己的浏览器里，不会上传到 GitHub（这个仓库是公开的）。价格用最新收盘价，只是估算。上面的占比和上限只看 QQQ 和 TQQQ；SPY 股数是给下面的稳妥模式用的。</p>
-      </div>
-    </section>
-
-    <section class="block" aria-labelledby="jTitle">
-      <div class="section-head">
-        <div><h2 id="jTitle">我的买入记录</h2>
-          <p class="sub">记下每次实际买了多少，算出真实成本、收益，以及有没有按规则执行</p></div>
-      </div>
-      <div class="card">
-        <div class="plan-form">
-          <label class="field">日期<input id="jDate" type="date"></label>
-          <label class="field">买了什么
-            <select id="jAsset"><option value="QQQ">QQQ</option><option value="TQQQ">TQQQ</option><option value="SPY">SPY</option></select>
-          </label>
-          <label class="field">花了多少
-            <span class="unit-input"><span>$</span><input id="jAmount" type="number" min="0" step="10" inputmode="decimal"></span>
-          </label>
-          <label class="field">成交价
-            <span class="unit-input"><span>$</span><input id="jPrice" type="number" min="0" step="0.01" inputmode="decimal"></span>
-          </label>
-          <label class="field">备注（可不填）<input id="jNote" type="text" maxlength="40"></label>
-          <button class="btn primary" id="jAdd" type="button">添加</button>
-        </div>
-        <p class="small" id="jHint"></p>
-        <div id="jResult" hidden>
-          <div class="tiles" id="jTiles"></div>
-          <p class="verdict" id="jVerdict" style="font-size:15px"></p>
-          <div class="table-wrap">
-            <table id="jTable">
-              <thead><tr><th scope="col">日期</th><th scope="col">买了什么</th><th scope="col">金额</th><th scope="col">成交价</th><th scope="col">股数</th><th scope="col">当时规则说</th><th scope="col"></th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="plan-actions">
-          <button class="btn ghost" id="jBackup" type="button">生成备份</button>
-          <button class="btn ghost" id="jPaste" type="button">粘贴导入</button>
-          <span class="small" id="jMsg"></span>
-        </div>
-        <div id="jBox" hidden>
-          <textarea class="backup" id="jText" rows="8" spellcheck="false"></textarea>
-          <div class="plan-actions">
-            <button class="btn primary" id="jDoImport" type="button" hidden>导入这些记录</button>
-            <button class="btn ghost" id="jCopy" type="button" hidden>复制</button>
-            <a class="btn" id="jMail" href="#" hidden>用邮件发给自己</a>
-            <button class="btn ghost" id="jClose" type="button">关闭</button>
-          </div>
-          <label class="field" id="jMailField" style="margin-top:10px" hidden>备份发到哪个邮箱
-            <input id="jEmail" type="email" inputmode="email" placeholder="you@example.com">
-          </label>
-        </div>
-        <p class="small">记录只存在这台设备的浏览器里，不会上传到 GitHub。换设备或清了浏览器数据就没了——用「生成备份」发一封给自己，以后「粘贴导入」就能恢复。第一个站（纳指100定投）导出的备份也能直接导入。</p>
-      </div>
-    </section>
-
-    <section class="block" aria-labelledby="planTitle">
-      <div class="section-head">
-        <div><h2 id="planTitle">我的资金计划：这次投多少</h2>
-          <p class="sub">按你手里的人民币闲钱，算出每次的基础金额</p></div>
-      </div>
-      <div class="card">
-        <div class="plan-form">
-          <label class="field">现在的闲钱
-            <span class="unit-input"><span>¥</span><input id="pCash" type="number" min="0" step="1000" inputmode="decimal"></span>
-          </label>
-          <label class="field">每月新增闲钱
-            <span class="unit-input"><span>¥</span><input id="pMonthly" type="number" min="0" step="500" inputmode="decimal"></span>
-          </label>
-          <label class="field">拿出多少投资
-            <span class="unit-input"><input id="pShare" class="narrow" type="number" min="0" max="100" step="5" inputmode="decimal"><span>%</span></span>
-          </label>
-          <label class="field">现在这笔分多久投完
-            <select id="pWeeks">
-              <option value="13">3 个月</option><option value="26">半年</option>
-              <option value="52">1 年</option><option value="78">1 年半</option><option value="104">2 年</option>
-            </select>
-          </label>
-          <label class="field">汇率（1 美元 = ? 元）
-            <span class="unit-input"><input id="pRate" class="narrow" type="number" min="1" max="20" step="0.01" inputmode="decimal"><span>元</span></span>
-          </label>
-        </div>
-        <div class="plan-result">
-          <p class="verdict" id="pVerdict" style="font-size:15px;margin-bottom:6px"></p>
-          <div class="plan-choices">
-            <button class="plan-choice" id="pSafe" type="button" role="radio" aria-checked="true">
-              <span class="pc-label">保守</span><span class="pc-amount" id="pSafeAmt">—</span><span class="pc-sub" id="pSafeSub"></span>
-            </button>
-            <button class="plan-choice" id="pAvg" type="button" role="radio" aria-checked="false">
-              <span class="pc-label">平均</span><span class="pc-amount" id="pAvgAmt">—</span><span class="pc-sub" id="pAvgSub"></span>
-            </button>
-          </div>
-          <div class="plan-actions"><button class="btn primary" id="pApply" type="button">把基础金额设为 —</button></div>
-          <ul class="small plan-notes" id="pNotes"></ul>
-        </div>
-      </div>
-    </section>
-
-    <footer>
-      <p>这是一个自己做的记录工具，不是投资建议。回测用的是历史数据，未来不一定重复。</p>
-      <p id="footData"></p>
-    </footer>
-  </div>
+  <footer>
+    <p>信号用上一个交易日的收盘价。美股开盘：北京时间 21:30（夏令时）/ 22:30（冬令时）。这不是投资建议。</p>
+    <p id="footData"></p>
+  </footer>
 </div>
 
 <script src="strategy.js"></script>
@@ -749,1570 +425,538 @@
   "use strict";
   var DCA = window.DCA2;
   var $ = function (id) { return document.getElementById(id); };
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
-  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   var MINUS = "−";
   var usd0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
   var usd2 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  var cny0 = new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY", maximumFractionDigits: 0 });
   function money(v, dec) { return isFinite(v) ? (v < 0 ? MINUS : "") + (dec ? usd2 : usd0).format(Math.abs(v)) : "—"; }
-  function yuan(v) { return isFinite(v) ? (v < 0 ? MINUS : "") + cny0.format(Math.abs(v)) : "—"; }
-  function pct(v, d, signed) {
-    if (!isFinite(v)) return "—";
-    var s = (Math.abs(v) * 100).toFixed(d == null ? 1 : d) + "%";
-    return v < 0 ? MINUS + s : (signed && v > 0 ? "+" + s : s);
-  }
+  function moneyS(v) { return money(v, v < 1000 && Math.round(v) !== v); }
+  function pct(v, d, signed) { if (!isFinite(v)) return "—"; var s = (Math.abs(v) * 100).toFixed(d == null ? 1 : d) + "%"; return v < 0 ? MINUS + s : (signed && v > 0 ? "+" + s : s); }
   function pctRaw(v, d) { return isFinite(v) ? (v < 0 ? MINUS : "") + Math.abs(v).toFixed(d == null ? 1 : d) + "%" : "—"; }
-  function cnDate(ds) {
-    if (!ds) return "—";
-    var p = ds.split("-");
-    return +p[0] + "年" + +p[1] + "月" + +p[2] + "日";
-  }
-  function times(v) { return isFinite(v) ? v.toFixed(v >= 10 ? 0 : 1) + " 倍" : "—"; }
+  function cnDate(ds) { if (!ds) return "—"; var p = ds.split("-"); return +p[0] + "年" + +p[1] + "月" + +p[2] + "日"; }
+  function cnMD(ds) { var p = ds.split("-"); return +p[1] + "月" + +p[2] + "日"; }
+  function cnYM(ds) { var p = ds.split("-"); return +p[0] + "年" + +p[1] + "月"; }
+  function mult(m) { return (Math.round(m * 100) / 100) + ""; }
 
-  var CFG_KEY = "qqq-tqqq-config-v1";
-  var PLAN_KEY = "qqq-tqqq-plan-v1";
-  var HOLD_KEY = "qqq-tqqq-holdings-v1";
-  var STEADY_KEY = "qqq-tqqq-steady-v1";
-  var ANNUAL_KEY = "qqq-tqqq-annual-v1";
-  var TRADES_KEY = "qqq-tqqq-trades-v1";
-  var EMAIL_KEY = "qqq-tqqq-backup-email";
-  var LEVER_KEY = "qqq-tqqq-lever-v1";
+  var CFG_KEY = "qqq-tqqq-config-v1", HOLD_KEY = "qqq-tqqq-holdings-v1", TRADES_KEY = "qqq-tqqq-trades-v1", EMAIL_KEY = "qqq-tqqq-backup-email";
   var SITE_URL = "https://gini10484-afk.github.io/qqq-tqqq-dca/";
-  var state = { series: null, cfg: DCA.withDefaults({}), st: DCA.steadyDefaults({}), lv: DCA.leverDefaults({}), meta: null };
+  var state = { series: null, cfg: DCA.withDefaults({}) };
   var cache = {};
+  function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 存不了就算了 */ } }
+  function load(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
 
-  function loadCfg() {
-    try {
-      var s = JSON.parse(localStorage.getItem(CFG_KEY) || "null");
-      if (s && typeof s === "object") state.cfg = DCA.withDefaults(s);
-    } catch (e) { /* 存不了就用默认 */ }
-  }
-  function saveCfg() {
-    try { localStorage.setItem(CFG_KEY, JSON.stringify(state.cfg)); } catch (e) { /* 忽略 */ }
-  }
-  // 输入框里放原始数字（比如 60/30/10），算的时候再归一到 100
-  var stRaw = {
-    coreWeight: DCA.STEADY_DEFAULT.coreWeight,
-    qqqWeight: DCA.STEADY_DEFAULT.qqqWeight,
-    tqqqWeight: DCA.STEADY_DEFAULT.tqqqWeight,
-    rebalance: DCA.STEADY_DEFAULT.rebalance,
-    band: DCA.STEADY_DEFAULT.band,
-  };
-  function loadSteady() {
-    try {
-      var v = JSON.parse(localStorage.getItem(STEADY_KEY) || "null");
-      if (v && typeof v === "object") {
-        ["coreWeight", "qqqWeight", "tqqqWeight", "rebalance", "band"].forEach(function (k) {
-          if (v[k] != null) stRaw[k] = v[k];
-        });
-      }
-    } catch (e) { /* 存不了就用默认 */ }
-    state.st = DCA.steadyDefaults(stRaw);
-  }
-  function saveSteady() {
-    try { localStorage.setItem(STEADY_KEY, JSON.stringify(stRaw)); } catch (e) { /* 忽略 */ }
-  }
-
-  function isDaily() { return state.cfg.frequency === "daily"; }
-  function perWord() { return isDaily() ? "每次" : "每周"; }
-
-  // ================= 设置 =================
-  function fillSettings() {
-    var c = state.cfg;
-    $("baseAmount").value = c.baseAmount;
-    $("frequency").value = c.frequency;
-    $("investWeekday").value = c.investWeekday;
-    $("basis").value = c.basis;
-    $("dipThreshold").value = c.dipThreshold;
-    $("tqqqCap").value = c.tqqqCap;
-    $("flowShare").value = c.flowShare;
-    $("sellMode").value = c.sellMode;
-    $("sellPeakWithin").value = c.sellPeakWithin;
-    $("sellTargetShare").value = c.sellTargetShare;
-    $("peakWithinField").hidden = c.sellMode !== "peak";
-    $("peakTargetField").hidden = c.sellMode !== "peak";
-    $("weekdayField").hidden = isDaily();
-    $("hotAboveText").textContent = c.hotAbove;
-    $("hotMultText").textContent = c.hotMultiplier;
-    $("ebFreq").textContent = isDaily() ? "每个交易日" : "每周定投";
-    $("basisWord").textContent = c.basis === "ath" ? "历史最高点" : "近一年最高点";
-    renderTiers();
-  }
-  function renderTiers() {
-    var box = $("tiers");
-    box.textContent = "";
-    var t = state.cfg.tiers;
-    t.forEach(function (tier, i) {
-      var row = el("div", "tier-row");
-      var sw = el("i", "sw");
-      sw.style.background = "var(--ramp-" + Math.min(5, i + 2) + ")";
-      row.appendChild(sw);
-      row.appendChild(el("span", "rule-name", i === 0 ? "跌破均线" : "再跌"));
-      var l1 = el("label");
-      l1.appendChild(document.createTextNode("回撤 ≥"));
-      var inA = document.createElement("input");
-      inA.type = "number"; inA.min = 0; inA.max = 99; inA.step = 1; inA.value = tier.drawdown;
-      inA.disabled = i === 0;
-      inA.setAttribute("aria-label", "第 " + (i + 1) + " 档的回撤门槛（%）");
-      inA.addEventListener("change", function () { tier.drawdown = +inA.value; commit(); });
-      l1.appendChild(inA);
-      l1.appendChild(document.createTextNode("%"));
-      row.appendChild(l1);
-      var l2 = el("label");
-      l2.appendChild(document.createTextNode("投"));
-      var inB = document.createElement("input");
-      inB.type = "number"; inB.min = 0; inB.max = 20; inB.step = 0.1; inB.value = tier.multiplier;
-      inB.setAttribute("aria-label", "第 " + (i + 1) + " 档的倍数");
-      inB.addEventListener("change", function () { tier.multiplier = +inB.value; commit(); });
-      l2.appendChild(inB);
-      l2.appendChild(document.createTextNode("倍"));
-      row.appendChild(l2);
-      box.appendChild(row);
+  // ============ 标签页 ============
+  var TABS = ["home", "backtest", "records", "settings"];
+  function showTab(name, push) {
+    if (TABS.indexOf(name) < 0) name = "home";
+    TABS.forEach(function (t) {
+      var on = t === name;
+      $("tab-" + t).setAttribute("aria-selected", on ? "true" : "false");
+      $("tab-" + t).tabIndex = on ? 0 : -1;
+      $("p-" + t).hidden = !on;
     });
+    if (push && location.hash !== "#" + name) history.replaceState(null, "", name === "home" ? location.pathname : "#" + name);
+    if (name === "backtest") player.draw();
   }
-  function commit() {
-    state.cfg = DCA.withDefaults(state.cfg);
-    saveCfg();
-    fillSettings();
-    renderAll();
+  TABS.forEach(function (t, i) {
+    $("tab-" + t).addEventListener("click", function () { showTab(t, true); });
+    $("tab-" + t).addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      var n = TABS[(i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+      showTab(n, true); $("tab-" + n).focus();
+    });
+  });
+  window.addEventListener("hashchange", function () { showTab(location.hash.slice(1)); });
+
+  // ============ 持仓（首页和记录页共用） ============
+  var holding = { qqqShares: "", tqqqShares: "" };
+  function loadHold() {
+    var h = load(HOLD_KEY);
+    if (h && typeof h === "object") { holding = h; holding.qqqShares = h.qqqShares || ""; holding.tqqqShares = h.tqqqShares || ""; }
   }
-  function bindSettings() {
-    function readAll() {
-      state.cfg.baseAmount = +$("baseAmount").value;
-      state.cfg.frequency = $("frequency").value;
-      state.cfg.investWeekday = +$("investWeekday").value;
-      state.cfg.basis = $("basis").value;
-      state.cfg.dipThreshold = +$("dipThreshold").value;
-      state.cfg.tqqqCap = +$("tqqqCap").value;
-      state.cfg.flowShare = +$("flowShare").value;
-      state.cfg.sellMode = $("sellMode").value;
-      state.cfg.sellPeakWithin = +$("sellPeakWithin").value;
-      state.cfg.sellTargetShare = +$("sellTargetShare").value;
-      state.cfg.sellOnRecover = false; // 老开关不再用，避免和 sellMode 打架
-      commit();
+  function bindHold() {
+    loadHold();
+    function sync(q, t) {
+      holding.qqqShares = q; holding.tqqqShares = t;
+      $("hQ").value = q; $("hT").value = t; $("rQ").value = q; $("rT").value = t;
+      store(HOLD_KEY, holding);
+      renderHome();
     }
-    ["baseAmount", "frequency", "investWeekday", "basis", "dipThreshold", "tqqqCap", "flowShare"].forEach(function (id) {
-      $(id).addEventListener("change", readAll);
-    });
-    ["sellMode", "sellPeakWithin", "sellTargetShare"].forEach(function (id) {
-      $(id).addEventListener("change", readAll);
-    });
-    $("resetCfg").addEventListener("click", function () {
-      state.cfg = DCA.withDefaults({});
-      commit();
-      $("cfgNote").textContent = "已恢复默认";
-      setTimeout(function () { $("cfgNote").textContent = ""; }, 2500);
-    });
+    sync(holding.qqqShares, holding.tqqqShares);
+    ["hQ", "hT"].forEach(function (id) { $(id).addEventListener("input", function () { sync($("hQ").value, $("hT").value); }); });
+    ["rQ", "rT"].forEach(function (id) { $(id).addEventListener("input", function () { sync($("rQ").value, $("rT").value); }); });
   }
 
-  // ================= 图表小工具 =================
-  function chartBox(host, height) {
-    var w = Math.max(280, host.clientWidth || 640);
-    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 " + w + " " + height);
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", height);
-    svg.setAttribute("role", "img");
-    host.textContent = "";
-    host.appendChild(svg);
-    return { svg: svg, w: w, h: height };
-  }
-  function svgEl(name, attrs) {
-    var e = document.createElementNS("http://www.w3.org/2000/svg", name);
-    for (var k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
-    return e;
-  }
-  function niceTicks(lo, hi, count) {
-    var span = hi - lo;
-    if (!(span > 0)) return [lo];
-    var step = Math.pow(10, Math.floor(Math.log10(span / count)));
-    var err = span / count / step;
-    if (err >= 7.5) step *= 10; else if (err >= 3.5) step *= 5; else if (err >= 1.5) step *= 2;
-    var out = [], v = Math.ceil(lo / step) * step;
-    for (; v <= hi + step * 0.001; v += step) out.push(Math.round(v / step) * step);
-    return out;
-  }
-
-  // ================= 信号 =================
-  function cond(on, title, sub) {
-    var d = el("div", "cond" + (on ? " on" : ""));
-    var m = el("span", "mark", on ? "✓" : "✗");
-    var b = el("div");
-    b.appendChild(el("div", "ct", title));
-    b.appendChild(el("div", "cs", sub));
-    d.appendChild(m); d.appendChild(b);
-    return d;
-  }
-
-  function renderSellBox(st) {
-    var cfg = state.cfg;
-    var box = $("sellBox"), v = $("sellVerdict"), note = $("sellNote"), how = $("sellHow");
-    var h = st.hold;
-    var act = !!(h && h.needSell);
-    box.className = "sell-box" + (act ? " on" : "");
-    if (cfg.sellMode === "none") {
-      v.textContent = "不卖，连上限也不管";
-      note.textContent = "TQQQ 会一直累积。回测里这样做年化最高，但最大回撤 −78%、最惨时市值只剩投入的 17%，而且 TQQQ 最后会占到组合的 91%——等于赌身家。";
-      how.textContent = "";
-      return;
-    }
-    if (act) {
-      v.textContent = h.kind === "rule" && cfg.sellMode === "ma" ? "该把 TQQQ 全部换回 QQQ" : "该减 TQQQ";
-      how.textContent = "按你填的持仓：卖掉约 " + h.sellShares.toFixed(2) + " 股 TQQQ（约 " + money(h.sellAmount) +
-        "）换成 QQQ，占比就从 " + h.tqqqShare.toFixed(1) + "% 回到 " + h.targetShare.toFixed(0) + "%。";
-    } else if (st.sell.triggered) {
-      v.textContent = "规则说该减了";
-      how.textContent = h ? "不过按你填的持仓（TQQQ 占 " + h.tqqqShare.toFixed(1) + "%）已经在目标以内，不用动。"
-        : "下面「我的持仓」填上股数，这里就会算出具体卖几股。";
-    } else {
-      v.textContent = "暂时不用卖";
-      how.textContent = h && h.total > 0
-        ? "现在 TQQQ 占组合 " + h.tqqqShare.toFixed(1) + "%，上限 " + cfg.tqqqCap + "%。"
-        : "下面「我的持仓」填上股数，这里就会按你的实际占比提醒。";
-    }
-    note.textContent = st.sell.note;
-  }
-
-  function renderSignal() {
+  // ============ 本周怎么投 ============
+  function renderHome() {
     var s = state.series, cfg = state.cfg;
-    var st = DCA.currentStatus(s, cfg, holding, { dd: cache.dd, tl: cache.tl });
-    cache.status = st;
-    var sig = DCA.currentSignal(s, cfg, { dd: cache.dd, tl: cache.tl });
-    cache.sig = sig;
-    $("sigDate").textContent = cnDate(sig.nextDate) + "（" + sig.weekdayName + "）";
-    $("sigAmount").textContent = money(sig.amount, sig.amount < 1000);
-    var pill = $("sigAsset");
-    pill.textContent = sig.asset === "TQQQ" ? "买 TQQQ" : "买 QQQ";
-    pill.className = "asset-pill " + (sig.asset === "TQQQ" ? "t" : "q");
-    $("sigMult").textContent = "基础金额的 " + sig.multiplier + " 倍";
-    var parts = [];
-    parts.push("按 " + cnDate(sig.basedOn) + " 收盘价：QQQ " + money(sig.close, true) + "，离" + (cfg.basis === "ath" ? "历史" : "近一年") + "最高点跌了 " + pctRaw(sig.drawdown) + "；");
-    if (sig.dev == null) parts.push("均线数据还不够。");
-    else if (sig.dev < 0) parts.push("在 200 日均线（" + money(sig.ma, true) + "）下面 " + pctRaw(-sig.dev) + "，属于下跌趋势。");
-    else parts.push("比 200 日均线（" + money(sig.ma, true) + "）高 " + pctRaw(sig.dev) + "。");
-    if (sig.asset === "TQQQ") {
-      parts.push("回撤已经到了你设的 " + cfg.dipThreshold + "%，所以这次的钱买 TQQQ（现价 " + money(sig.tqqqPrice, true) + "）");
-      parts.push(cfg.flowShare < 100 ? "——其中 " + money(sig.tqqqAmount, true) + " 买 TQQQ，剩下的买 QQQ。" : "。");
-    } else if (sig.dev != null && sig.dev < 0) {
-      parts.push("还没跌到你设的 " + cfg.dipThreshold + "%，所以这次仍然买 QQQ。");
+    if (!s) return;
+    var hasHold = (+holding.qqqShares > 0) || (+holding.tqqqShares > 0);
+    var st = DCA.currentStatus(s, cfg, hasHold ? holding : null, { dd: cache.dd, tl: cache.tl });
+    var b = st.buy, g = st.gap, h = st.hold;
+    var ddWord = cfg.basis === "ath" ? "历史高点" : "一年高点";
+    $("hDate").textContent = "下一次定投 · " + cnMD(st.nextDate) + " " + st.weekdayName + " · 按 " + cnMD(st.basedOn) + " 收盘价判断";
+
+    // 一句话结论
+    var amt = moneyS(b.amount);
+    var head, lede;
+    if (b.asset === "TQQQ") {
+      head = "这周投 " + amt + "，买 TQQQ。";
+      lede = "纳指跌破 200 日均线 " + pctRaw(-g.maGap) + "，离" + ddWord + "跌了 " + pctRaw(g.ddNow) + "，两个条件都满足了，按规则加码到 " + mult(b.multiplier) + " 倍并改买 TQQQ" +
+        (cfg.flowShare < 100 ? "（其中 " + moneyS(b.tqqqAmount) + " 买 TQQQ，其余买 QQQ）" : "") + "。";
+    } else if (b.state === "down") {
+      head = "这周多投一点：" + amt + "，买 QQQ。";
+      lede = "纳指跌破了 200 日均线 " + pctRaw(-g.maGap) + "，离" + ddWord + "跌了 " + pctRaw(g.ddNow) + "，还没到 " + cfg.dipThreshold + "%，所以加码到 " + mult(b.multiplier) + " 倍，但仍然买 QQQ。";
+    } else if (b.state === "hot") {
+      head = "这周少投一点：" + amt + "，买 QQQ。";
+      lede = "纳指比 200 日均线高 " + pctRaw(g.maGap) + "，涨得有点多，按规则只投 " + mult(b.multiplier) + " 倍。";
     } else {
-      parts.push("不是大跌，买 QQQ。");
+      head = "这周照常投 " + amt + "，买 QQQ。";
+      lede = (g.ddNow < 0.05 ? "纳指正处在" + ddWord.replace("高点", "最高点") : "纳指离" + ddWord + (g.ddNow < 3 ? "只差 " : "跌了 ") + pctRaw(g.ddNow)) +
+        (g.maGap == null ? "。" : "，在 200 日均线上方 " + pctRaw(g.maGap) + "，离「大跌」" + (g.ddNow < 10 ? "还很远" : "还有一段距离") + "。");
     }
-    $("sigExplain").textContent = parts.join("");
-    // 两个买入条件离得多远
-    var cw = $("sigConds");
-    cw.textContent = "";
-    cw.appendChild(cond(st.gap.belowMA,
-      "条件① 跌破 " + cfg.maWindow + " 日均线",
-      st.gap.maGap == null ? "均线数据还不够"
-        : st.gap.belowMA ? "已经在均线下方 " + pctRaw(-st.gap.maGap)
-        : "现在比均线高 " + pctRaw(st.gap.maGap) + "，还要再跌这么多才到"));
-    cw.appendChild(cond(st.gap.deepEnough,
-      "条件② 离" + (cfg.basis === "ath" ? "历史" : "近一年") + "最高点跌 ≥ " + cfg.dipThreshold + "%",
-      st.gap.deepEnough ? "已经跌了 " + pctRaw(st.gap.ddNow)
-        : "现在跌了 " + pctRaw(st.gap.ddNow) + "，还差 " + pctRaw(st.gap.ddGap)));
-    renderSellBox(st);
-    var foot = [];
-    foot.push("美股开盘时间：北京时间 21:30（夏令时）/ 22:30（冬令时）。");
-    foot.push("信号用的是上一个交易日的收盘价，不会偷看当天价格。");
-    foot.push("另一种回测里风险收益更好的做法（按风险调杠杆）在下面「另一种做法」。");
-    $("sigFoot").textContent = foot.join(" ");
+    var sellAct = h && h.needSell;
+    if (sellAct) lede += " 你的 TQQQ 占到 " + h.tqqqShare.toFixed(1) + "%，超过目标，该卖掉约 " + h.sellShares.toFixed(2) + " 股。";
+    else if (st.sell.triggered && cfg.sellMode !== "none" && !h) lede += " 按你选的卖出方式，现在该减 TQQQ，下面填上持仓就能算出卖几股。";
+    else if (b.asset === "QQQ") lede += " TQQQ 不用买，也不用卖。";
+    $("hHead").textContent = head;
+    $("hLede").textContent = lede;
+
+    // 三格
+    $("tAmt").textContent = amt;
+    $("tAmtS").textContent = "基础金额 " + moneyS(cfg.baseAmount) + " × " + mult(b.multiplier);
+    $("tAsset").textContent = b.asset;
+    $("tAsset").className = "v num " + (b.asset === "TQQQ" ? "t" : "q");
+    $("tAssetS").textContent = "收盘价 " + money(b.asset === "TQQQ" ? st.tqqqPrice : st.close, true);
+    if (cfg.sellMode === "none") { $("tSell").textContent = "不卖"; $("tSellS").textContent = "你选了完全不卖（危险）"; }
+    else if (sellAct) { $("tSell").textContent = "卖 " + h.sellShares.toFixed(2) + " 股"; $("tSellS").textContent = "约 " + money(h.sellAmount) + "，换成 QQQ"; }
+    else if (st.sell.triggered && !h) { $("tSell").textContent = "该减了"; $("tSellS").textContent = "填上持仓算具体股数"; }
+    else { $("tSell").textContent = "不用"; $("tSellS").textContent = cfg.sellMode === "cap" ? "只在超过 " + cfg.tqqqCap + "% 上限时卖" : st.sell.note; }
+    $("tSell").style.color = sellAct ? "var(--t-ink)" : "";
+
+    // 两个条件
+    var c1 = $("c1"); c1.textContent = "";
+    var r1 = el("div", "row");
+    r1.appendChild(el("span", null, "① 跌破 200 日均线"));
+    var r1b = el("span");
+    if (g.maGap == null) r1b.textContent = "均线数据还不够";
+    else if (g.belowMA) { r1b.appendChild(el("span", "ok-mark", "已满足 ")); r1b.appendChild(document.createTextNode("在均线下方 " + pctRaw(-g.maGap))); }
+    else { r1b.appendChild(document.createTextNode("现在高出 ")); r1b.appendChild(el("b", "num", pctRaw(g.maGap))); }
+    r1.appendChild(r1b); c1.appendChild(r1);
+    var c2 = $("c2"); c2.textContent = "";
+    var r2 = el("div", "row");
+    r2.appendChild(el("span", null, "② 离" + ddWord + "跌 ≥ " + cfg.dipThreshold + "%"));
+    var r2b = el("span");
+    if (g.deepEnough) { r2b.appendChild(el("span", "ok-mark", "已满足 ")); r2b.appendChild(document.createTextNode("跌了 " + pctRaw(g.ddNow))); }
+    else { r2b.appendChild(document.createTextNode("现在 ")); r2b.appendChild(el("b", "num", pctRaw(g.ddNow))); r2b.appendChild(document.createTextNode("，还差 " + g.ddGap.toFixed(1) + " 个点")); }
+    r2.appendChild(r2b); c2.appendChild(r2);
+    var bar = el("div", "bar"); var bi = el("i"); bi.style.width = Math.min(100, cfg.dipThreshold > 0 ? g.ddNow / cfg.dipThreshold * 100 : 100) + "%"; bar.appendChild(bi); c2.appendChild(bar);
+
+    // 规则阶梯
+    var lad = $("ladder"); lad.textContent = "";
+    function rowL(label, right, now, tq) {
+      var d = el("div", now ? "now" : null);
+      d.appendChild(el("span", null, label + (now ? "（现在）" : "")));
+      d.appendChild(el("span", "num" + (tq && !now ? " tq" : ""), right));
+      lad.appendChild(d);
+    }
+    rowL("比均线高 ≥ " + cfg.hotAbove + "%（涨太多）", "× " + mult(cfg.hotMultiplier) + " · QQQ", b.state === "hot");
+    rowL("均线上方", "× 1 · QQQ", b.state === "up" || b.state === "dip");
+    var tiers = cfg.tiers, curTier = -1;
+    if (b.state === "down") for (var k = 0; k < tiers.length; k++) if (g.ddNow >= tiers[k].drawdown) curTier = k;
+    tiers.forEach(function (t, i) {
+      var tq = t.drawdown >= cfg.dipThreshold;
+      rowL(i === 0 ? "跌破均线" : "跌破均线，离高点 ≥ " + t.drawdown + "%", "× " + mult(t.multiplier) + " · " + (tq ? "TQQQ" : "QQQ"), i === curTier, tq);
+    });
+    var bounds = tiers.map(function (t) { return t.drawdown; });
+    if (bounds.indexOf(cfg.dipThreshold) < 0) {
+      var d0 = el("div"); d0.appendChild(el("span", null, "离高点 ≥ " + cfg.dipThreshold + "% 起，同一档里的钱改买 TQQQ")); d0.appendChild(el("span", "tq", "TQQQ")); lad.appendChild(d0);
+    }
+
+    // 持仓结果
+    var res = $("holdRes");
+    res.className = "res";
+    if (!h || !(h.total > 0)) { res.textContent = "填上股数，就告诉你 TQQQ 占多少、要不要卖几股。只存在你的浏览器里。"; return; }
+    res.textContent = "";
+    res.appendChild(document.createTextNode("组合 " + money(h.total) + "，TQQQ 占 "));
+    res.appendChild(el("b", "num", h.tqqqShare.toFixed(1) + "%"));
+    if (cfg.sellMode === "none") res.appendChild(document.createTextNode("。你选了完全不卖，所以不提醒卖出。"));
+    else if (h.needSell) {
+      res.className = "res sell";
+      res.appendChild(document.createTextNode("，超过目标 " + h.targetShare.toFixed(0) + "%。"));
+      res.appendChild(el("b", null, "卖掉约 " + h.sellShares.toFixed(2) + " 股 TQQQ（约 " + money(h.sellAmount) + "）换成 QQQ"));
+      res.appendChild(document.createTextNode("，就回到 " + h.targetShare.toFixed(0) + "%。"));
+    } else res.appendChild(document.createTextNode("（上限 " + cfg.tqqqCap + "%），不用动。"));
   }
 
-  // ================= 买 TQQQ 的时段图 =================
-  function renderZoneChart() {
-    var s = state.series, cfg = state.cfg;
-    var host = $("zoneChart");
-    var box = chartBox(host, 220);
-    var w = box.w, h = box.h, L = 44, R = 14, T = 10, B = 26;
-    var iw = w - L - R, ih = h - T - B;
-    var n = s.n;
-    var maxDD = 0;
-    for (var i = 0; i < n; i++) if (cache.dd[i] > maxDD) maxDD = cache.dd[i];
-    maxDD = Math.ceil(maxDD / 10) * 10;
-    var x = function (i) { return L + iw * i / (n - 1); };
-    var y = function (v) { return T + ih * v / maxDD; };
-    // 买 TQQQ 的区间
-    cache.zones.forEach(function (z) {
-      box.svg.appendChild(svgEl("rect", { x: x(z.fromIdx), y: T, width: Math.max(1, x(z.toIdx) - x(z.fromIdx)), height: ih, fill: "var(--zone)" }));
-    });
-    niceTicks(0, maxDD, 4).forEach(function (v) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: y(v), y2: y(v), class: "grid" }));
-      box.svg.appendChild(svgEl("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end", class: "tick" })).textContent = MINUS + v + "%";
-    });
-    // 阈值线
-    if (cfg.dipThreshold > 0 && cfg.dipThreshold < maxDD) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: y(cfg.dipThreshold), y2: y(cfg.dipThreshold), class: "ref", "stroke-dasharray": "4 3" }));
-      var lab = svgEl("text", { x: L + 4, y: y(cfg.dipThreshold) - 5, class: "ref-label" });
-      lab.textContent = "买 TQQQ 的门槛 " + MINUS + cfg.dipThreshold + "%";
-      box.svg.appendChild(lab);
-    }
-    var d = "";
-    for (var k = 0; k < n; k++) d += (k ? "L" : "M") + x(k).toFixed(1) + " " + y(cache.dd[k]).toFixed(1);
-    box.svg.appendChild(svgEl("path", { d: d, fill: "none", stroke: "var(--s-qqq)", "stroke-width": 1.4 }));
-    // 年份刻度
-    var lastYear = null;
-    for (var j = 0; j < n; j += Math.max(1, Math.floor(n / 400))) {
-      var yr = s.dates[j].slice(0, 4);
-      if (yr !== lastYear && +yr % 4 === 0) {
-        lastYear = yr;
-        box.svg.appendChild(svgEl("text", { x: x(j), y: h - 8, "text-anchor": "middle", class: "tick" })).textContent = yr;
-      }
-    }
-    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: T + ih, y2: T + ih, class: "axis" }));
-    var totalDays = cache.zones.reduce(function (a, z) { return a + (z.toIdx - z.fromIdx + 1); }, 0);
-    $("zoneNote").textContent = "从 " + cnDate(s.dates[0]) + " 到现在，符合条件的交易日一共 " + totalDays +
-      " 天（占 " + (totalDays / n * 100).toFixed(1) + "%），分成 " + cache.zones.length + " 段。最近一段是 " +
-      (cache.zones.length ? cnDate(cache.zones[cache.zones.length - 1].from) + " 到 " + cnDate(cache.zones[cache.zones.length - 1].to) : "—") + "。";
-  }
-
-  // ================= 回测 =================
-  var MODES = [
-    { key: "plainQ", name: "普通定投（只买 QQQ）", color: "var(--s-qqq)" },
-    { key: "comboQ", name: "综合策略（只买 QQQ）", color: "var(--s-combo)" },
-    { key: "fixed", name: "每次固定 20% 买 TQQQ", color: "var(--s-fixed)" },
-    { key: "dip", name: "大跌才买 TQQQ（本站规则）", color: "var(--s-dip)" },
-    { key: "steady", name: "稳妥模式（宽基打底）", color: "var(--s-steady)" },
-  ];
-
+  // ============ 回测 ============
+  var COLORS = { plain: "var(--base)", dip: "var(--t)", lever: "var(--q)" };
   function renderBacktest() {
     var s = state.series, cfg = state.cfg;
-    var start = $("btYear").value;
-    var res = DCA.compareModes(s, cfg, { startDate: start + "-01-01", fixedShare: 20 });
-    cache.steady = DCA.steadyBacktest(s, cfg, state.st, { startDate: start + "-01-01" });
-    if (cache.steady) res = res.concat([cache.steady]);
-    cache.bt = res;
-    if (!res.length) return;
-    $("btStart").textContent = cnDate(res[0].startDate);
-    $("btEnd").textContent = cnDate(res[0].endDate);
-    var tb = $("btTable").tBodies[0];
-    tb.textContent = "";
-    var bestX = Math.max.apply(null, res.map(function (r) { return r.xirr; }));
-    res.forEach(function (r, i) {
-      var m = MODES[i];
-      var tr = el("tr", (r.mode === "dip" || r.mode === "steady") ? "em" : null);
-      var td0 = el("td", "label");
-      td0.appendChild(svgKey(m.color));
-      td0.appendChild(document.createTextNode(" " + m.name));
-      tr.appendChild(td0);
-      tr.appendChild(el("td", null, money(r.invested)));
-      tr.appendChild(el("td", null, money(r.value)));
-      var tdx = el("td", r.xirr === bestX ? "best" : null, pct(r.xirr, 2));
-      tr.appendChild(tdx);
-      tr.appendChild(el("td", null, pctRaw(r.maxDrawdown)));
-      var tdw = el("td", null, (r.worstRatio * 100).toFixed(0) + "%");
-      tdw.appendChild(el("span", "note", cnDate(r.worstRatioDate)));
-      tr.appendChild(tdw);
-      tr.appendChild(el("td", null, r.tqqqShare > 0.05 ? r.tqqqShare.toFixed(0) + "%" : "—"));
-      tb.appendChild(tr);
-    });
-    var dip = res[3], combo = res[1];
-    $("btNote").textContent = "差距：大跌才买 TQQQ 的年化是 " + pct(dip.xirr, 2) + "，只买 QQQ 是 " + pct(combo.xirr, 2) +
-      "，高 " + ((dip.xirr - combo.xirr) * 100).toFixed(2) + " 个百分点；代价是最大回撤从 " + pctRaw(combo.maxDrawdown) +
-      " 变成 " + pctRaw(dip.maxDrawdown) + "。这段时间里一共买了 " + dip.tqqqBuys + " 次 TQQQ，做了 " + dip.rebalances +
-      " 次再平衡，手续费假设合计 " + money(dip.feePaid) + "。";
-    renderCurveChart(res);
-    renderShareChart(dip);
-    renderSellTable();
-    // 同样的规则、但不设上限，用来说明上限起了什么作用
-    var noCap = DCA.backtest(s, Object.assign({}, cfg, { tqqqCap: 100 }), {
-      mode: "dip", startDate: start + "-01-01", dd: cache.dd, tl: cache.tl,
-    });
-    $("shareNote").textContent = cfg.tqqqCap >= 100
-      ? "你把上限设成了 100%，等于不封顶：到今天 TQQQ 占组合的 " + dip.tqqqShare.toFixed(0) + "%。"
-      : "这条线是按你设的 " + cfg.tqqqCap + "% 上限跑出来的，所以它总是贴着上限。如果不设上限，同样的买入规则到今天 TQQQ 会占到组合的 " +
-        noCap.tqqqShare.toFixed(0) + "%，年化 " + pct(noCap.xirr, 2) + " 但最大回撤 " + pctRaw(noCap.maxDrawdown) +
-        "、最惨时市值只有投入的 " + (noCap.worstRatio * 100).toFixed(0) + "%。";
-  }
-  function renderSellTable() {
-    var s = state.series, cfg = state.cfg;
-    var start = $("btYear").value;
-    var tb = $("sellTable").tBodies[0];
-    tb.textContent = "";
-    var rows = ["cap", "ma", "peak", "none"].map(function (m) {
-      var r = DCA.backtest(s, Object.assign({}, cfg, { sellMode: m }), {
-        mode: "dip", startDate: start + "-01-01", dd: cache.dd, tl: cache.tl,
-      });
-      var sum = 0;
-      for (var i = 0; i < r.tshare.length; i++) sum += r.tshare[i];
-      r.avgShare = r.tshare.length ? sum / r.tshare.length : 0;
-      r.key = m;
-      return r;
-    });
-    rows.forEach(function (r) {
-      var tr = el("tr", r.key === cfg.sellMode ? "em" : null);
-      tr.appendChild(el("td", "label", DCA.SELL_NAMES[r.key] + (r.key === cfg.sellMode ? "（你现在用的）" : "")));
-      tr.appendChild(el("td", null, pct(r.xirr, 2)));
-      tr.appendChild(el("td", null, pctRaw(r.maxDrawdown)));
-      tr.appendChild(el("td", null, (r.worstRatio * 100).toFixed(0) + "%"));
-      tr.appendChild(el("td", null, r.avgShare.toFixed(1) + "%"));
-      tr.appendChild(el("td", null, String(r.rebalances)));
-      tb.appendChild(tr);
-    });
-    var capR = rows[0], maR = rows[1];
-    $("sellTableNote").textContent =
-      "看「平均 TQQQ 占组合」这一列就明白了：择时卖之所以回撤更小，主要是因为它让你平均只拿着很少的 TQQQ（" +
-      maR.avgShare.toFixed(1) + "% 对 " + capR.avgShare.toFixed(1) + "%），而不是因为卖在了对的时候。" +
-      "想要同样的效果，直接把上限从 " + cfg.tqqqCap + "% 调低也能做到，而且不用频繁动手、不用交那么多次税。";
-    return rows;
-  }
-
-  function svgKey(color) {
-    var i = el("i", "key");
-    i.style.background = color;
-    return i;
-  }
-
-  function renderCurveChart(res) {
-    var s = state.series;
-    var host = $("curveChart");
-    var box = chartBox(host, 260);
-    var w = box.w, h = box.h, L = 40, R = 52, T = 12, B = 26;
-    var iw = w - L - R, ih = h - T - B;
-    var first = res[0].firstIdx, last = res[0].lastIdx;
-    var n = last - first + 1;
-    var lo = 0.2, hi = 1;
-    res.forEach(function (r) {
-      for (var i = 0; i < r.ratio.length; i++) { if (r.ratio[i] > hi) hi = r.ratio[i]; if (r.ratio[i] < lo) lo = r.ratio[i]; }
-    });
-    hi = Math.ceil(hi); lo = Math.max(0, Math.floor(lo * 10) / 10);
-    var x = function (i) { return L + iw * i / (n - 1); };
-    var y = function (v) { return T + ih * (1 - (v - lo) / (hi - lo)); };
-    niceTicks(lo, hi, 4).forEach(function (v) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: y(v), y2: y(v), class: "grid" }));
-      box.svg.appendChild(svgEl("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end", class: "tick" })).textContent = v + "x";
-    });
-    if (lo < 1 && hi > 1) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: y(1), y2: y(1), class: "ref", "stroke-dasharray": "4 3" }));
-    }
-    var ends = [];
-    res.forEach(function (r, mi) {
-      var d = "";
-      for (var i = 0; i < r.ratio.length; i++) d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(r.ratio[i]).toFixed(1);
-      box.svg.appendChild(svgEl("path", { d: d, fill: "none", stroke: MODES[mi].color, "stroke-width": (r.mode === "dip" || r.mode === "steady") ? 2.2 : 1.5 }));
-      ends.push({ y: y(r.ratio[r.ratio.length - 1]), text: r.ratio[r.ratio.length - 1].toFixed(1) + "x", color: MODES[mi].color });
-    });
-    ends.sort(function (a, b) { return a.y - b.y; });
-    for (var e = 1; e < ends.length; e++) if (ends[e].y - ends[e - 1].y < 13) ends[e].y = ends[e - 1].y + 13;
-    ends.forEach(function (p) {
-      var t = svgEl("text", { x: w - R + 6, y: p.y + 4, class: "end-label", fill: p.color });
-      t.textContent = p.text;
-      box.svg.appendChild(t);
-    });
-    var lastYear = null;
-    for (var j = 0; j < n; j += Math.max(1, Math.floor(n / 400))) {
-      var yr = s.dates[first + j].slice(0, 4);
-      if (yr !== lastYear && +yr % (n > 2500 ? 4 : 2) === 0) {
-        lastYear = yr;
-        box.svg.appendChild(svgEl("text", { x: x(j), y: h - 8, "text-anchor": "middle", class: "tick" })).textContent = yr;
-      }
-    }
-    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: T + ih, y2: T + ih, class: "axis" }));
-    var lg = $("curveLegend");
-    lg.textContent = "";
-    MODES.slice(0, res.length).forEach(function (m) {
-      var sp = el("span");
-      sp.appendChild(svgKey(m.color));
-      sp.appendChild(document.createTextNode(m.name));
-      lg.appendChild(sp);
-    });
-  }
-
-  function renderShareChart(r) {
-    var s = state.series;
-    var host = $("shareChart");
-    var box = chartBox(host, 160);
-    var w = box.w, h = box.h, L = 40, R = 14, T = 10, B = 26;
-    var iw = w - L - R, ih = h - T - B;
-    var n = r.tshare.length;
-    var hi = Math.max(state.cfg.tqqqCap * 1.4, 10);
-    for (var i = 0; i < n; i++) if (r.tshare[i] > hi) hi = r.tshare[i];
-    hi = Math.ceil(hi / 10) * 10;
-    var x = function (i) { return L + iw * i / (n - 1); };
-    var y = function (v) { return T + ih * (1 - v / hi); };
-    niceTicks(0, hi, 3).forEach(function (v) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: y(v), y2: y(v), class: "grid" }));
-      box.svg.appendChild(svgEl("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end", class: "tick" })).textContent = v + "%";
-    });
-    var d = "M" + L + " " + y(0);
-    for (var k = 0; k < n; k++) d += "L" + x(k).toFixed(1) + " " + y(r.tshare[k]).toFixed(1);
-    d += "L" + x(n - 1).toFixed(1) + " " + y(0) + "Z";
-    box.svg.appendChild(svgEl("path", { d: d, fill: "var(--s-dip)", "fill-opacity": 0.28, stroke: "var(--s-dip)", "stroke-width": 1.2 }));
-    if (state.cfg.tqqqCap < hi) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: y(state.cfg.tqqqCap), y2: y(state.cfg.tqqqCap), stroke: "var(--ink-2)", "stroke-width": 1, "stroke-dasharray": "4 3" }));
-      var t = svgEl("text", { x: L + 4, y: y(state.cfg.tqqqCap) - 5, class: "ref-label" });
-      t.textContent = "上限 " + state.cfg.tqqqCap + "%";
-      box.svg.appendChild(t);
-    }
-    var lastYear = null;
-    for (var j = 0; j < n; j += Math.max(1, Math.floor(n / 400))) {
-      var yr = s.dates[r.firstIdx + j].slice(0, 4);
-      if (yr !== lastYear && +yr % (n > 2500 ? 4 : 2) === 0) {
-        lastYear = yr;
-        box.svg.appendChild(svgEl("text", { x: x(j), y: h - 8, "text-anchor": "middle", class: "tick" })).textContent = yr;
-      }
-    }
-    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: T + ih, y2: T + ih, class: "axis" }));
-  }
-
-  // ================= 滚动 10 年 =================
-  function renderRolling() {
-    var rows = DCA.rollingWindows(state.series, state.cfg, { years: 10, modes: ["comboQ", "dip"], fixedShare: 20 });
-    var tb = $("rollTable").tBodies[0];
-    tb.textContent = "";
-    var win = 0, diffs = [];
-    rows.forEach(function (row) {
-      var a = row.results.comboQ, b = row.results.dip;
-      var diff = (b.xirr - a.xirr) * 100;
-      diffs.push(diff);
-      if (diff > 0) win++;
-      var tr = el("tr");
-      tr.appendChild(el("td", null, row.year + " 年"));
-      tr.appendChild(el("td", null, pct(a.xirr, 1)));
-      tr.appendChild(el("td", null, pct(b.xirr, 1)));
-      tr.appendChild(el("td", diff > 0 ? "best" : null, (diff >= 0 ? "+" : MINUS) + Math.abs(diff).toFixed(1)));
-      tr.appendChild(el("td", null, pctRaw(a.maxDrawdown, 0)));
-      tr.appendChild(el("td", null, pctRaw(b.maxDrawdown, 0)));
-      tb.appendChild(tr);
-    });
-    if (!rows.length) { $("rollVerdict").textContent = "数据还不够算 10 年一段。"; return; }
-    var avg = diffs.reduce(function (a, b) { return a + b; }, 0) / diffs.length;
-    var worst = Math.min.apply(null, diffs);
-    var worstRow = rows[diffs.indexOf(worst)];
-    $("rollVerdict").innerHTML = "";
-    var v = $("rollVerdict");
-    v.appendChild(document.createTextNode("一共 " + rows.length + " 段 10 年。大跌才买 TQQQ 的年化平均比只买 QQQ 高 "));
-    v.appendChild(el("b", null, avg.toFixed(2) + " 个百分点"));
-    v.appendChild(document.createTextNode("，其中 " + win + " 段更高、" + (rows.length - win) + " 段更低；最差的一段是 " +
-      worstRow.year + " 年开始，" + (worst >= 0 ? "高" : "低") + " " + Math.abs(worst).toFixed(2) + " 个百分点。"));
-  }
-
-  // ================= 按风险调杠杆 =================
-  var lvRaw = {};
-  function loadLever() {
-    try {
-      var v = JSON.parse(localStorage.getItem(LEVER_KEY) || "null");
-      if (v && typeof v === "object") lvRaw = v;
-    } catch (e) { /* 存不了就用默认 */ }
-    state.lv = DCA.leverDefaults(lvRaw);
-  }
-  function fillLever() {
-    var l = state.lv;
-    $("lvKind").value = l.kind;
-    $("lvTarget").value = l.volTarget;
-    $("lvMax").value = l.maxLev;
-    $("lvMin").value = l.minLev;
-    $("lvOn").value = l.maOnLev;
-    $("lvOff").value = l.maOffLev;
-    $("lvBuf").value = l.maBuffer;
-    $("lvBand").value = l.band;
-    var isVol = l.kind === "vol";
-    Array.prototype.forEach.call(document.querySelectorAll(".lv-vol"), function (e) { e.hidden = !isVol; });
-    Array.prototype.forEach.call(document.querySelectorAll(".lv-ma"), function (e) { e.hidden = isVol; });
-    $("lvQ").value = holding.qqqShares;
-    $("lvT").value = holding.tqqqShares;
-    $("lvC").value = holding.cash;
-  }
-  function bindLever() {
-    loadLever();
-    fillLever();
-    function read() {
-      lvRaw = {
-        kind: $("lvKind").value, volTarget: +$("lvTarget").value, maxLev: +$("lvMax").value, minLev: +$("lvMin").value,
-        maOnLev: +$("lvOn").value, maOffLev: +$("lvOff").value, maBuffer: +$("lvBuf").value, band: +$("lvBand").value,
-      };
-      state.lv = DCA.leverDefaults(lvRaw);
-      try { localStorage.setItem(LEVER_KEY, JSON.stringify(state.lv)); } catch (e) { /* 忽略 */ }
-      fillLever();
-      renderLever();
-    }
-    ["lvKind", "lvTarget", "lvMax", "lvMin", "lvOn", "lvOff", "lvBuf", "lvBand"].forEach(function (id) {
-      $(id).addEventListener("change", read);
-    });
-    $("lvReset").addEventListener("click", function () {
-      lvRaw = {};
-      state.lv = DCA.leverDefaults({});
-      try { localStorage.removeItem(LEVER_KEY); } catch (e) { /* 忽略 */ }
-      fillLever();
-      renderLever();
-    });
-    function readHold() {
-      holding.qqqShares = $("lvQ").value;
-      holding.tqqqShares = $("lvT").value;
-      holding.cash = $("lvC").value;
-      $("hQ").value = holding.qqqShares;
-      $("hT").value = holding.tqqqShares;
-      saveHold();
-      renderHold();
-      renderSteadyPlan();
-      renderSignal();
-      renderLeverNow();
-    }
-    ["lvQ", "lvT", "lvC"].forEach(function (id) { $(id).addEventListener("input", readHold); });
-  }
-
-  function levText(L) { return (Math.round(L * 100) / 100).toFixed(2).replace(/0$/, "").replace(/\.0$/, "") + " 倍"; }
-  var LV_PARTS = [
-    { name: "现金", cls: "k", color: "var(--muted)" },
-    { name: "QQQ", cls: "q", color: "var(--s-combo)" },
-    { name: "TQQQ", cls: "t", color: "var(--s-dip)" },
-  ];
-
-  function renderLever() {
-    var s = state.series, cfg = state.cfg, lv = state.lv;
-    cache.lvSig = DCA.leverSignals(s, cfg, lv, { tl: cache.tl });
-    cache.ci = cache.ci || DCA.cashIndex(s);
-    var rule = lv.kind === "vol"
-      ? "规则：每次定投前看纳指（QQQ）最近 " + lv.volWindow + " 个交易日的年化波动，杠杆 = " + lv.volTarget +
-        "% ÷ 最近波动，夹在 " + lv.minLev + "–" + lv.maxLev + " 倍之间。"
-      : "规则：QQQ 高过 " + cfg.maWindow + " 日均线 " + lv.maBuffer + "% 就用 " + lv.maOnLev + " 倍，低过 " + lv.maBuffer +
-        "% 才降回 " + lv.maOffLev + " 倍，中间维持原状（缓冲带防止来回换）。";
-    $("lvRule").textContent = rule + " 1 倍以上 = QQQ + TQQQ（2 倍就是一半 TQQQ 一半 QQQ）；1 倍以下 = QQQ + 现金。" +
-      "实际配比和目标的差（三项差额加总）超过 " + lv.band + "% 才真的调仓，平时只用新钱去补。设置只存在你的浏览器里。";
-    renderLeverNow();
-    renderLeverBacktest();
-    renderLeverFacts();
-  }
-
-  function renderLeverNow() {
-    var s = state.series, cfg = state.cfg, lv = state.lv;
-    if (!cache.lvSig) return;
-    var hasHold = (+holding.qqqShares > 0) || (+holding.tqqqShares > 0) || (+holding.cash > 0);
-    var st = DCA.leverStatus(s, cfg, lv, hasHold ? {
-      qqqShares: holding.qqqShares, tqqqShares: holding.tqqqShares, cash: holding.cash, amount: cfg.baseAmount,
-    } : null, { sig: cache.lvSig });
-    cache.lvStatus = st;
-    $("lvDate").textContent = cnDate(st.nextDate) + "（" + st.weekdayName + "）";
-    $("lvHero").textContent = levText(st.targetLever);
-    $("lvPill").textContent = st.kindName;
-    var bar = $("lvBar");
-    bar.textContent = "";
-    LV_PARTS.forEach(function (p, k) {
-      if (st.weights[k] <= 0.05) return;
-      var it = el("i", p.cls);
-      it.style.width = st.weights[k] + "%";
-      bar.appendChild(it);
-    });
-    var wbox = $("lvWeights");
-    wbox.textContent = "";
-    [1, 2, 0].forEach(function (k) {
-      var sp = el("span");
-      sp.appendChild(el("i", "tag " + LV_PARTS[k].cls, LV_PARTS[k].name));
-      sp.appendChild(document.createTextNode(" "));
-      sp.appendChild(el("b", null, st.weights[k].toFixed(0) + "%"));
-      wbox.appendChild(sp);
-    });
-    var ex = "按 " + cnDate(st.basedOn) + " 收盘：";
-    var cw = $("lvConds");
-    cw.textContent = "";
-    if (st.kind === "vol") {
-      ex += "QQQ 最近 " + lv.volWindow + " 个交易日的年化波动是 " + pctRaw(st.vol) + "，目标 " + lv.volTarget + "% ÷ " +
-        pctRaw(st.vol) + " = " + (lv.volTarget / st.vol).toFixed(2) + " 倍" +
-        (st.targetLever >= lv.maxLev - 1e-9 ? "，超过上限，按 " + lv.maxLev + " 倍算。" : st.targetLever <= lv.minLev + 1e-9 ? "，低于下限，按 " + lv.minLev + " 倍算。" : "。");
-      ex += st.vol < lv.volTarget ? " 市场比较平静，所以多拿杠杆。" : " 市场波动大，所以少拿杠杆。";
-      cw.appendChild(cond(st.vol <= st.volForMax, "波动 ≤ " + st.volForMax.toFixed(1) + "% → 顶到 " + lv.maxLev + " 倍",
-        "现在 " + pctRaw(st.vol) + (st.vol <= st.volForMax ? "，已经在这一档" : "")));
-      cw.appendChild(cond(st.vol > st.volForOne, "波动 > " + st.volForOne + "% → 降到 1 倍以下（开始拿现金）",
-        st.vol > st.volForOne ? "现在 " + pctRaw(st.vol) + "，已经在这一档" : "还差 " + (st.volForOne - st.vol).toFixed(1) + " 个点"));
-    } else {
-      ex += "QQQ 比 " + cfg.maWindow + " 日均线（" + money(st.ma, true) + "）" + (st.dev >= 0 ? "高 " : "低 ") + pctRaw(Math.abs(st.dev)) +
-        "，开关" + (st.maOn ? "打开" : "关着") + "，用 " + levText(st.targetLever) + "。";
-      if (st.lastChange) ex += " 上一次切换是 " + cnDate(st.lastChange) + "。";
-      cw.appendChild(cond(st.maOn, "开关" + (st.maOn ? "打开（" + lv.maOnLev + " 倍）" : "关着（" + lv.maOffLev + " 倍）"),
-        st.switchAt ? (st.maOn ? "QQQ 跌到 " + money(st.switchAt, true) + "（再跌 " + pctRaw(-st.switchGap) + "）才会关"
-          : "QQQ 涨到 " + money(st.switchAt, true) + "（再涨 " + pctRaw(st.switchGap) + "）才会开") : "均线数据还不够"));
-    }
-    $("lvExplain").textContent = ex;
-
-    var box = $("lvBox"), v = $("lvVerdict"), how = $("lvHow"), how2 = $("lvHow2");
-    var amt = cfg.baseAmount;
-    var w = st.weights;
-    if (!st.hold || !(st.hold.total > 0)) {
-      box.className = "sell-box";
-      v.textContent = "这次 " + money(amt, true) + "：QQQ " + money(amt * w[1] / 100, true) + " · TQQQ " + money(amt * w[2] / 100, true) +
-        (w[0] > 0.05 ? " · 现金 " + money(amt * w[0] / 100, true) : "");
-      how.textContent = "上面填了你现在的股数和现金，这里会优先把新钱补给最缺的那一层，并告诉你要不要真的调仓。";
-      how2.textContent = "";
-      return;
-    }
-    var h = st.hold;
-    var buyTxt = [1, 2, 0].filter(function (k) { return h.buy[k] > 0.005; }).map(function (k) {
-      return LV_PARTS[k].name + " " + money(h.buy[k], true) + (k > 0 ? "（约 " + h.buyShares[k].toFixed(2) + " 股）" : "");
-    }).join(" · ");
-    box.className = "sell-box" + (h.needRebalance ? " on" : "");
-    how.textContent = "现在：QQQ " + h.weightsNow[1].toFixed(0) + "% · TQQQ " + h.weightsNow[2].toFixed(0) + "% · 现金 " +
-      h.weightsNow[0].toFixed(0) + "%，实际杠杆 " + levText(h.leverNow) + "（组合 " + money(h.total) + "）。这次的 " +
-      money(h.amount, true) + " 先补最缺的：" + (buyTxt || "—") + "。";
-    if (h.needRebalance) {
-      v.textContent = "该调仓了（偏离 " + h.driftAfter.toFixed(0) + "%，超过 " + lv.band + "%）";
-      var parts = [];
-      [1, 2, 0].forEach(function (k) {
-        var t = h.trades[k];
-        if (Math.abs(t) < 1) return;
-        if (k === 0) { parts.push((t > 0 ? "留出现金 " : "动用现金 ") + money(Math.abs(t))); return; }
-        parts.push((t > 0 ? "买 " : "卖 ") + LV_PARTS[k].name + " " + money(Math.abs(t)) +
-          "（约 " + Math.abs(h.tradeShares[k]).toFixed(2) + " 股）");
-      });
-      how2.textContent = "投完新钱后再：" + parts.join("，") + "，就回到目标配比。每次卖出在应税账户里都是一次应税事件。";
-    } else {
-      v.textContent = "不用调仓，只投新钱";
-      how2.textContent = "投完后和目标差 " + h.driftAfter.toFixed(0) + "%，没到你设的 " + lv.band + "%，先不卖。";
-    }
-  }
-
-  function renderLeverBacktest() {
-    var s = state.series, cfg = state.cfg, lv = state.lv;
     var start = $("btYear").value + "-01-01";
-    var pre = { tl: cache.tl, ci: cache.ci };
     var plain = DCA.backtest(s, cfg, { mode: "plainQ", startDate: start, dd: cache.dd, tl: cache.tl });
     var dip = DCA.backtest(s, cfg, { mode: "dip", startDate: start, dd: cache.dd, tl: cache.tl });
-    var mine = DCA.leverBacktest(s, cfg, lv, { startDate: start, sig: cache.lvSig, ci: cache.ci });
-    if (!plain || !mine) return;
+    var lever = DCA.leverBacktest(s, cfg, {}, { startDate: start, tl: cache.tl, ci: cache.ci });
+    if (!plain || !dip || !lever) return;
+    var per = cfg.frequency === "daily" ? "每个交易日" : "每周";
+    $("btTitle").textContent = per + "投 " + moneyS(cfg.baseAmount) + "，从 " + $("btYear").value + " 年投到今天";
+    var dx = (dip.xirr - plain.xirr) * 100;
+    var lede = "大跌才买 TQQQ 年化" + (dx >= 0 ? "多赚 " : "少赚 ") + Math.abs(dx).toFixed(1) + " 个点";
+    if (dip.worstRatio < plain.worstRatio - 0.005) lede += "，代价是最难的时候亏得更深：" + cnYM(dip.worstRatioDate) + "账户只剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%（只买 QQQ 是 " + (plain.worstRatio * 100).toFixed(0) + "%）。";
+    else lede += "，最难的时候账户剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%，只买 QQQ 是 " + (plain.worstRatio * 100).toFixed(0) + "%。";
+    var yrs = Math.max(1, Math.round((s.day[plain.lastIdx] - s.day[plain.firstIdx]) / 365.25));
+    $("btLede").textContent = lede + " 按下面的播放键，看这 " + yrs + " 年账户是怎么一周周变过来的。";
+    if ($("pStartText").textContent.indexOf("再看") < 0) $("pStartText").textContent = "播放 " + yrs + " 年回放";
+
     var rows = [
-      { r: plain, name: "普通定投（只买 QQQ）", color: "var(--s-qqq)" },
-      { r: dip, name: "大跌才买 TQQQ（本站规则）", color: "var(--s-dip)" },
+      { r: plain, name: "只买 QQQ", color: COLORS.plain },
+      { r: dip, name: "大跌才买 TQQQ（你的规则）", color: COLORS.dip, mine: true },
+      { r: lever, name: "对照：按风险调杠杆", color: COLORS.lever, dim: true },
     ];
-    var alts = [];
-    [20, 25, 30, 35].forEach(function (t) { alts.push({ kind: "vol", volTarget: t, minLev: 0.5, maxLev: 2, band: lv.band }); });
-    alts.push({ kind: "ma", maBuffer: 2, maOnLev: 2, maOffLev: 1, band: lv.band });
-    var mineShown = false;
-    alts.forEach(function (a) {
-      var d = DCA.leverDefaults(a);
-      var isMine = d.kind === lv.kind && (d.kind === "vol"
-        ? d.volTarget === lv.volTarget && d.minLev === lv.minLev && d.maxLev === lv.maxLev && d.volWindow === lv.volWindow
-        : d.maBuffer === lv.maBuffer && d.maOnLev === lv.maOnLev && d.maOffLev === lv.maOffLev);
-      var r = isMine ? mine : DCA.leverBacktest(s, cfg, d, Object.assign({ startDate: start }, pre));
-      if (isMine) mineShown = true;
-      rows.push({ r: r, name: (d.kind === "vol" ? "波动率目标 " + d.volTarget + "%" : "均线开关 ±" + d.maBuffer + "%（" + d.maOnLev + " 倍 / " + d.maOffLev + " 倍）"),
-        color: "var(--s-lever)", mine: isMine, lever: true });
-    });
-    if (!mineShown) rows.push({ r: mine, name: "你的设置：" + mine.modeName, color: "var(--s-lever)", mine: true, lever: true });
-    cache.lvBt = mine;
-    var tb = $("lvTable").tBodies[0];
-    tb.textContent = "";
-    var bestX = Math.max.apply(null, rows.map(function (x) { return x.r.xirr; }));
+    var tb = $("btTable").tBodies[0]; tb.textContent = "";
     rows.forEach(function (x) {
-      var r = x.r;
-      var tr = el("tr", x.mine ? "em" : null);
-      var td0 = el("td", "label");
-      td0.appendChild(svgKey(x.color));
-      td0.appendChild(document.createTextNode(" " + x.name + (x.mine ? "（你现在用的）" : "")));
-      tr.appendChild(td0);
-      tr.appendChild(el("td", null, money(r.invested)));
-      tr.appendChild(el("td", null, money(r.value)));
-      tr.appendChild(el("td", r.xirr === bestX ? "best" : null, pct(r.xirr, 2)));
-      tr.appendChild(el("td", null, pctRaw(r.maxDrawdown)));
-      var tdw = el("td", null, (r.worstRatio * 100).toFixed(0) + "%");
-      tdw.appendChild(el("span", "note", cnDate(r.worstRatioDate)));
-      tr.appendChild(tdw);
-      tr.appendChild(el("td", null, x.lever ? r.rebalancesPerYear.toFixed(1) + " 次" : r.mode === "dip" ? (r.rebalances / Math.max(1, (s.day[r.lastIdx] - s.day[r.firstIdx]) / 365.25)).toFixed(1) + " 次" : "—"));
-      tr.appendChild(el("td", null, x.lever ? r.avgLever.toFixed(2) + " 倍" : "—"));
+      var tr = el("tr", x.mine ? "mine" : x.dim ? "dim" : null);
+      var td = el("td"); var k = el("i", "key"); k.style.background = x.color; td.appendChild(k); td.appendChild(document.createTextNode(x.name)); tr.appendChild(td);
+      [money(x.r.invested), money(x.r.value), pct(x.r.xirr, 2), pctRaw(x.r.maxDrawdown), (x.r.worstRatio * 100).toFixed(0) + "%"].forEach(function (t) { tr.appendChild(el("td", "num", t)); });
       tb.appendChild(tr);
     });
-    // 结论
-    var dx = (mine.xirr - plain.xirr) * 100, dd = mine.maxDrawdown - plain.maxDrawdown;
-    var v = $("lvVerdictBt");
-    v.textContent = "";
-    v.appendChild(document.createTextNode("从 " + cnDate(mine.startDate) + " 到现在，你的设置（" + mine.modeName + "）和同样" + perWord() + "投 " +
-      money(cfg.baseAmount) + " 的普通定投比：年化 "));
-    v.appendChild(el("b", null, pct(mine.xirr, 2) + " 对 " + pct(plain.xirr, 2)));
-    v.appendChild(document.createTextNode("（" + (dx >= 0 ? "高 " : "低 ") + Math.abs(dx).toFixed(2) + " 个点），最大回撤 " +
-      pctRaw(mine.maxDrawdown) + " 对 " + pctRaw(plain.maxDrawdown) + "（" + (dd < 0 ? "更深 " : "更浅 ") + Math.abs(dd).toFixed(1) +
-      " 个点），最惨的时候剩投入的 " + (mine.worstRatio * 100).toFixed(0) + "% 对 " + (plain.worstRatio * 100).toFixed(0) + "%。"));
+
     // 滚动 10 年
-    var first = +s.dates[0].slice(0, 4) + 1, lastY = +s.dates[s.n - 1].slice(0, 4);
-    var diffs = [], years = [];
+    var first = +s.dates[0].slice(0, 4) + 1, lastY = +s.dates[s.n - 1].slice(0, 4), diffs = [], years = [];
     for (var y = first; y + 10 <= lastY + 1; y++) {
       var a = DCA.backtest(s, cfg, { mode: "plainQ", startDate: y + "-01-01", endDate: (y + 10) + "-01-01", dd: cache.dd, tl: cache.tl });
-      var b = DCA.leverBacktest(s, cfg, lv, { startDate: y + "-01-01", endDate: (y + 10) + "-01-01", sig: cache.lvSig, ci: cache.ci });
-      if (a && b) { diffs.push((b.xirr - a.xirr) * 100); years.push(y); }
+      var c = DCA.backtest(s, cfg, { mode: "dip", startDate: y + "-01-01", endDate: (y + 10) + "-01-01", dd: cache.dd, tl: cache.tl });
+      if (a && c) { diffs.push((c.xirr - a.xirr) * 100); years.push(y); }
     }
     if (diffs.length) {
       var avg = diffs.reduce(function (p, q) { return p + q; }, 0) / diffs.length;
-      var win = diffs.filter(function (d) { return d > 0; }).length;
-      var worst = Math.min.apply(null, diffs);
-      v.appendChild(document.createTextNode(" 换个年代：每年 1 月开始投 10 年，一共 " + diffs.length + " 段，平均比普通定投" +
-        (avg >= 0 ? "高 " : "低 ") + Math.abs(avg).toFixed(2) + " 个点，" + win + " 段更高、" + (diffs.length - win) +
-        " 段更低；最差的一段（" + years[diffs.indexOf(worst)] + " 年开始）" + (worst >= 0 ? "也高 " : "低 ") + Math.abs(worst).toFixed(2) + " 个点。"));
-    }
-    $("lvTableNote").textContent = "每次都投同样的基础金额、不加码（「大跌才买」那行按它自己的规则加码，所以投入更多）。现金部分按当年联邦基金利率计息，" +
-      "换仓按 " + (DCA.FEE * 100).toFixed(2) + "% 估点差。2010 年以前的 TQQQ 是模拟数据。起始年份跟上面的回测表一起改。";
-    renderLeverCurve([rows[0], rows[1], { r: mine, name: "你的设置：" + mine.modeName, color: "var(--s-lever)" }]);
-    renderLeverChart(mine);
+      var win = diffs.filter(function (d) { return d > 0; }).length, worst = Math.min.apply(null, diffs);
+      $("rollText").textContent = "任选 10 年（共 " + diffs.length + " 段），平均比只买 QQQ " + (avg >= 0 ? "高 " : "低 ") + Math.abs(avg).toFixed(1) + " 个点，" + win +
+        " 段更高；最差一段（" + years[diffs.indexOf(worst)] + " 年起）" + (worst >= 0 ? "也高 " : "低 ") + Math.abs(worst).toFixed(1) + " 个点。";
+    } else $("rollText").textContent = "数据还不够算 10 年一段。";
+    $("cmpText").textContent = "按风险调杠杆（波动率目标 30%）年化 " + pct(lever.xirr, 1) + "、最惨时剩 " + (lever.worstRatio * 100).toFixed(0) +
+      "%，但每周都要按配比调仓、一年卖出好几次，所以这里只当对照。";
+
+    player.setData(rows);
   }
 
-  function yearTicks(svg, s, firstIdx, n, x, h) {
-    var lastYear = null;
-    for (var j = 0; j < n; j += Math.max(1, Math.floor(n / 400))) {
-      var yr = s.dates[firstIdx + j].slice(0, 4);
-      if (yr !== lastYear && +yr % (n > 2500 ? 4 : 2) === 0) {
-        lastYear = yr;
-        svg.appendChild(svgEl("text", { x: x(j), y: h - 8, "text-anchor": "middle", class: "tick" })).textContent = yr;
-      }
-    }
-  }
-
-  function renderLeverCurve(list) {
-    var s = state.series;
-    var host = $("lvCurveChart");
-    if (!host.clientWidth) return;
-    var box = chartBox(host, 240);
-    var w = box.w, h = box.h, L = 40, R = 52, T = 12, B = 26;
-    var iw = w - L - R, ih = h - T - B;
-    var n = list[0].r.ratio.length;
-    var lo = 0.2, hi = 1;
-    list.forEach(function (x) { x.r.ratio.forEach(function (v) { if (v > hi) hi = v; if (v < lo) lo = v; }); });
-    hi = Math.ceil(hi); lo = Math.max(0, Math.floor(lo * 10) / 10);
-    var X = function (i) { return L + iw * i / (n - 1); };
-    var Y = function (v) { return T + ih * (1 - (v - lo) / (hi - lo)); };
-    niceTicks(lo, hi, 4).forEach(function (v) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(v), y2: Y(v), class: "grid" }));
-      box.svg.appendChild(svgEl("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end", class: "tick" })).textContent = v + "x";
-    });
-    if (lo < 1 && hi > 1) box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(1), y2: Y(1), class: "ref", "stroke-dasharray": "4 3" }));
-    var ends = [];
-    list.forEach(function (x, k) {
-      var d = "", r = x.r.ratio;
-      var step = Math.max(1, Math.floor(r.length / 1200));
-      for (var i = 0; i < r.length; i += step) d += (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(r[i]).toFixed(1);
-      d += "L" + X(r.length - 1).toFixed(1) + " " + Y(r[r.length - 1]).toFixed(1);
-      box.svg.appendChild(svgEl("path", { d: d, fill: "none", stroke: x.color, "stroke-width": k === list.length - 1 ? 2.2 : 1.5 }));
-      ends.push({ y: Y(r[r.length - 1]), text: r[r.length - 1].toFixed(1) + "x", color: x.color });
-    });
-    ends.sort(function (a, b) { return a.y - b.y; });
-    for (var e = 1; e < ends.length; e++) if (ends[e].y - ends[e - 1].y < 13) ends[e].y = ends[e - 1].y + 13;
-    ends.forEach(function (p) {
-      box.svg.appendChild(svgEl("text", { x: w - R + 6, y: p.y + 4, class: "end-label" })).textContent = p.text;
-    });
-    yearTicks(box.svg, s, list[0].r.firstIdx, n, X, h);
-    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: T + ih, y2: T + ih, class: "axis" }));
-    var lg = $("lvCurveLegend");
-    lg.textContent = "";
-    list.forEach(function (x) {
-      var sp = el("span");
-      sp.appendChild(svgKey(x.color));
-      sp.appendChild(document.createTextNode(x.name));
-      lg.appendChild(sp);
-    });
-  }
-
-  function renderLeverChart(r) {
-    var s = state.series;
-    var host = $("lvLevChart");
-    if (!host.clientWidth) return;
-    var box = chartBox(host, 160);
-    var w = box.w, h = box.h, L = 40, R = 14, T = 10, B = 26;
-    var iw = w - L - R, ih = h - T - B;
-    var n = r.lev.length;
-    var hi = 2;
-    for (var i = 0; i < n; i++) if (r.lev[i] > hi) hi = r.lev[i];
-    hi = Math.ceil(hi * 2) / 2;
-    var X = function (i) { return L + iw * i / (n - 1); };
-    var Y = function (v) { return T + ih * (1 - v / hi); };
-    niceTicks(0, hi, 4).forEach(function (v) {
-      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(v), y2: Y(v), class: "grid" }));
-      box.svg.appendChild(svgEl("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end", class: "tick" })).textContent = v + "x";
-    });
-    var step = Math.max(1, Math.floor(n / 1200));
-    var d = "M" + L + " " + Y(0);
-    for (var k = 0; k < n; k += step) d += "L" + X(k).toFixed(1) + " " + Y(r.lev[k]).toFixed(1);
-    d += "L" + X(n - 1).toFixed(1) + " " + Y(r.lev[n - 1]).toFixed(1) + "L" + X(n - 1).toFixed(1) + " " + Y(0) + "Z";
-    box.svg.appendChild(svgEl("path", { d: d, fill: "var(--s-lever)", "fill-opacity": 0.28, stroke: "var(--s-lever)", "stroke-width": 1.2 }));
-    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(1), y2: Y(1), stroke: "var(--ink-2)", "stroke-width": 1, "stroke-dasharray": "4 3" }));
-    var t = svgEl("text", { x: L + 4, y: Y(1) - 5, class: "ref-label" });
-    t.textContent = "1 倍 = 纯 QQQ";
-    box.svg.appendChild(t);
-    yearTicks(box.svg, s, r.firstIdx, n, X, h);
-    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: T + ih, y2: T + ih, class: "axis" }));
-    var below = 0, full = 0;
-    for (var j = 0; j < n; j++) { if (r.lev[j] < 0.999) below++; if (r.lev[j] >= state.lv.maxLev * 0.9) full++; }
-    $("lvLevNote").textContent = "平均杠杆 " + r.avgLever.toFixed(2) + " 倍；有 " + Math.round(below / n * 100) + "% 的日子低于 1 倍（拿着现金），" +
-      Math.round(full / n * 100) + "% 的日子接近上限。杠杆降下来的时候，大多是 2000—2002、2008、2020、2022 这种大跌里。";
-  }
-
-  function renderLeverFacts() {
-    var ul = $("lvFacts");
-    if (!ul || ul.childNodes.length) return;
-    function add(t, d) {
-      var li = el("li");
-      li.appendChild(el("b", null, t));
-      li.appendChild(el("span", null, d));
-      ul.appendChild(li);
-    }
-    add("为什么这样做会更好",
-      "杠杆 ETF 的损耗大约和「杠杆² × 波动²」成正比，大跌时波动会扎堆变大，损耗也最狠。波动率目标在波动变大时自动把杠杆降下来（必要时换成现金），刚好躲开大部分损耗；平静的上涨期再把杠杆加回去。均线开关是同一个意思的粗糙版：跌破均线的时候通常也是波动大的时候。");
-    add("思路来自 GitHub 上的开源回测，参数没有调",
-      "波动率目标参考 penny-vault/leveraged-trend-ensemble 等项目，均线开关参考 cozec/LRS（Gayed《Leverage for the Long Run》）。我们用本站的数据和成本假设重跑过：均线参数在 1999—2012 年最好的几组，到 2013—2026 年排到中下游——挑参数没用，所以这里只给常见的整数默认值。");
-    add("打乱历史顺序也站得住",
-      "另外用 QLD（2 倍）做过压力测试：把 1999—2025 年的日涨跌按 1 年一块打乱，拼出 800 条假想历史。波动率目标 25–30% 在 98–99% 的路径里跑赢只买 QQQ，最差 10% 的路径年化仍有约 6%；全仓 QLD 最差 10% 是 −8%。均线开关的中位数也高，但最差情况不如波动率目标。");
-    add("代价：每周都要看，一年调仓好几次",
-      "波动率目标每次定投都要对一下配比，按默认设置平均一年真正卖出调仓 5–8 次；均线开关约 2 次。在应税账户里每次卖出都可能产生税，回测没有算税。");
-    add("用 TQQQ 拼出来的杠杆会漂",
-      "2 倍 = 一半 TQQQ 一半 QQQ。两次调仓之间 TQQQ 涨得快、跌得也快，实际杠杆会偏离目标，所以才设了「偏离多少才调仓」。真实的 TQQQ 从 2010 年才有，之前是模拟数据。");
-    add("现金要放在能生息的地方",
-      "1 倍以下的那部分现金在回测里按联邦基金利率计息，相当于放在美元货币基金或超短期国债 ETF 里。如果只是放着不动，收益会比回测低一点。");
-    add("它不是稳赚",
-      "2013 年以后的大牛市里，一直满仓 2 倍会比它赚得更多；它赢在大跌里亏得少。过去 27 年只是一段历史，这不是投资建议。");
-  }
-
-  // ================= 风险须知 =================
-  function renderFacts() {
-    var s = state.series;
-    var ul = $("facts");
-    ul.textContent = "";
-    function add(title, text) {
-      var li = el("li");
-      li.appendChild(el("b", null, title));
-      li.appendChild(el("span", null, text));
-      ul.appendChild(li);
-    }
-    var full = cache.bt && cache.bt.length ? cache.bt[3] : null;
-    var combo = cache.bt && cache.bt.length ? cache.bt[1] : null;
-    if (full) {
-      add("最惨的时候，账户只有你投进去的 " + (full.worstRatio * 100).toFixed(0) + "%",
-        "发生在 " + cnDate(full.worstRatioDate) + "。只买 QQQ 的话是 " + (combo.worstRatio * 100).toFixed(0) + "%。这是定投最难熬的时刻，绝大多数人是在这种时候放弃的。");
-      add("市值最长连续 " + full.underwaterYears.toFixed(1) + " 年低于投入",
-        "这段时间里你每次投钱，账面都是亏的。只买 QQQ 是 " + combo.underwaterYears.toFixed(1) + " 年。");
-      add("组合最大回撤 " + pctRaw(full.maxDrawdown) + "（" + cnDate(full.maxDrawdownDate) + "）",
-        "只买 QQQ 是 " + pctRaw(combo.maxDrawdown) + "。TQQQ 让账户波动明显变大。");
-    }
-    add("TQQQ 不能长拿，只能当加码工具",
-      "它追的是纳指“每天”的 3 倍，涨跌来回震荡会磨损本金。" + cache.simLine);
-    add("超额收益高度集中在极少数几次抄底",
-      "历史上最赚钱的那批 TQQQ 是 2009 年 3 月买的，到今天涨了几千倍。少抓住一两次，结果就会差很多——这也意味着这个规则很脆弱。");
-    add("2010 年以前的 TQQQ 是模拟的",
-      "TQQQ 2010 年 2 月才成立。之前的价格是用「QQQ 日涨跌 ×3 − 杠杆成本」推算的，系数用 2010 年之后的真实数据拟合。那个年代利率有 5–6%，杠杆很贵，误差会比后面大。");
-    add("没有算的成本",
-      "券商手续费、买卖价差、换汇成本、美股分红预扣税（中国居民 10%）都没算，再平衡只按 " + (DCA.FEE * 100).toFixed(2) + "% 估了个点差。频繁换仓在真实世界里更贵，还会产生税。");
-    add("杠杆 ETF 本身也有风险",
-      "TQQQ 用掉期合约实现杠杆，极端行情下可能大幅偏离 3 倍，理论上也存在被清盘的可能。有些券商需要先做风险测评才能买。");
-    add("过去 27 年美股科技股是超级牛市",
-      "1999 年以来 QQQ 涨了 " + times(s.adj[s.n - 1] / s.adj[0]) + "。以后不一定还有这样的回报，回测数字不是收益承诺。");
-  }
-
-  // ================= 稳妥模式 =================
-  var ASSETS = [
-    { key: "core", name: "SPY", full: "标普500", color: "var(--s-steady)", cls: "c" },
-    { key: "qqq", name: "QQQ", full: "纳指100", color: "var(--s-combo)", cls: "q" },
-    { key: "tqqq", name: "TQQQ", full: "3 倍杠杆", color: "var(--s-dip)", cls: "t" },
+  // ============ 回放（数据变化演示） ============
+  var EVENTS = [
+    { d: "2000-03-10", t: "科网泡沫见顶" }, { d: "2002-10-09", t: "纳指跌到谷底" }, { d: "2008-09-15", t: "雷曼兄弟倒闭" },
+    { d: "2020-03-16", t: "疫情暴跌" }, { d: "2022-01-03", t: "加息熊市开始" },
   ];
-
-  function fillSteady() {
-    $("stCore").value = stRaw.coreWeight;
-    $("stQ").value = stRaw.qqqWeight;
-    $("stT").value = stRaw.tqqqWeight;
-    $("stReb").value = stRaw.rebalance;
-    $("stBand").value = stRaw.band;
-  }
-  function bindSteady() {
-    function read() {
-      stRaw.coreWeight = +$("stCore").value;
-      stRaw.qqqWeight = +$("stQ").value;
-      stRaw.tqqqWeight = +$("stT").value;
-      stRaw.rebalance = $("stReb").value;
-      stRaw.band = +$("stBand").value;
-      state.st = DCA.steadyDefaults(stRaw);
-      saveSteady();
-      renderBacktest();
-      renderSteady();
+  var player = (function () {
+    var rows = null, n = 0, pos = 1, playing = false, raf = 0, last = 0, yMax = 1, started = false, hover = -1;
+    var svg = $("pSvg"), W = 900, H = 300, L = 56, R = 12, T = 18, B = 26;
+    var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function ns(tag, attrs) { var e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+    function fmtAxis(v) { return v >= 1e6 ? "$" + (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + "M" : v >= 1e3 ? "$" + Math.round(v / 1e3) + "k" : "$" + Math.round(v); }
+    function niceMax(v) { var p = Math.pow(10, Math.floor(Math.log10(v))); var m = v / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p; }
+    function invAt(r, i) { var rt = r.ratio[i]; return rt > 0 ? r.curve[i] / rt : 0; }
+    function setData(rs) {
+      rows = rs; n = rs[0].r.curve.length;
+      if (!started) pos = 1;
+      draw();
     }
-    ["stCore", "stQ", "stT", "stBand"].forEach(function (id) { $(id).addEventListener("change", read); });
-    $("stReb").addEventListener("change", read);
-    $("stReset").addEventListener("click", function () {
-      stRaw.coreWeight = DCA.STEADY_DEFAULT.coreWeight;
-      stRaw.qqqWeight = DCA.STEADY_DEFAULT.qqqWeight;
-      stRaw.tqqqWeight = DCA.STEADY_DEFAULT.tqqqWeight;
-      stRaw.rebalance = DCA.STEADY_DEFAULT.rebalance;
-      stRaw.band = DCA.STEADY_DEFAULT.band;
-      fillSteady();
-      read();
-    });
-  }
-
-  function tileInto(host, label, value, sub) {
-    var t = el("div", "tile");
-    t.appendChild(el("div", "t-label", label));
-    t.appendChild(el("div", "t-value", value));
-    if (sub) t.appendChild(el("div", "t-sub", sub));
-    host.appendChild(t);
-    return t;
-  }
-
-  function renderSteady() {
-    var s = state.series, has = !!s.hasSpy;
-    $("stNoData").hidden = has;
-    $("stWrap").hidden = !has;
-    if (!has) return;
-    var st = state.st, r = cache.steady;
-    $("stBandField").hidden = st.rebalance !== "band";
-    $("stWeightNote").textContent = "实际用的配比：SPY " + st.coreWeight.toFixed(1) + "% · QQQ " +
-      st.qqqWeight.toFixed(1) + "% · TQQQ " + st.tqqqWeight.toFixed(1) +
-      "%（三个数会自动按比例凑成 100%）。再平衡：" + DCA.REBALANCE_NAMES[st.rebalance] +
-      (st.rebalance === "band" ? "，某一层偏离目标 " + st.band + " 个百分点就动一次" : "") +
-      "。换仓成本按 0.05% 的点差估。";
-    if (!r) return;
-
-    var byMode = {};
-    (cache.bt || []).forEach(function (x) { byMode[x.mode] = x; });
-    var plain = byMode.plainQ, dip = byMode.dip;
-
-    var tiles = $("stTiles");
-    tiles.textContent = "";
-    tileInto(tiles, "年化", pct(r.xirr, 2),
-      plain ? (r.xirr >= plain.xirr ? "比只买 QQQ 高 " : "比只买 QQQ 低 ") + Math.abs((r.xirr - plain.xirr) * 100).toFixed(2) + " 个点" : null);
-    tileInto(tiles, "最大回撤", pctRaw(r.maxDrawdown),
-      plain ? "只买 QQQ 是 " + pctRaw(plain.maxDrawdown) : cnDate(r.maxDrawdownDate));
-    tileInto(tiles, "最惨的时候", (r.worstRatio * 100).toFixed(0) + "%",
-      "市值只剩投入的这么多" + (plain ? "（只买 QQQ 是 " + (plain.worstRatio * 100).toFixed(0) + "%）" : "（" + cnDate(r.worstRatioDate) + "）"));
-    tileInto(tiles, "现在市值", money(r.value), "投入 " + money(r.invested) + " · 再平衡 " + r.rebalances + " 次，成本 " + money(r.feePaid));
-
-    var bar = $("stBar");
-    bar.textContent = "";
-    var now = [r.coreShare, 100 - r.coreShare - r.tqqqShare, r.tqqqShare];
-    ASSETS.forEach(function (a, i) {
-      var it = el("i", a.cls);
-      it.style.width = Math.max(0, now[i]) + "%";
-      it.title = a.name + " " + now[i].toFixed(1) + "%";
-      bar.appendChild(it);
-    });
-    $("stBarNote").textContent = "回测跑到今天时的实际占比：SPY " + now[0].toFixed(1) + "% · QQQ " +
-      now[1].toFixed(1) + "% · TQQQ " + now[2].toFixed(1) + "%。" +
-      (st.rebalance === "never" ? "选了「从不卖」，所以涨得快的那层会越占越多。" : "");
-
-    var v = $("stVerdict");
-    if (plain) {
-      var dx = (r.xirr - plain.xirr) * 100;
-      var dd = r.maxDrawdown - plain.maxDrawdown; // 都是负数，dd<0 表示回撤更深
-      v.textContent = "从 " + cnDate(r.startDate) + " 到现在，和投同样多钱的「普通定投只买 QQQ」比：年化 " +
-        pct(r.xirr, 2) + " 对 " + pct(plain.xirr, 2) + "（" + (dx >= 0 ? "高 " : "低 ") + Math.abs(dx).toFixed(2) + " 个点），" +
-        "最大回撤 " + pctRaw(r.maxDrawdown) + " 对 " + pctRaw(plain.maxDrawdown) + "（" +
-        (dd < 0 ? "更深 " : "更浅 ") + Math.abs(dd).toFixed(1) + " 个点），" +
-        "最惨的时候手里剩投入的 " + (r.worstRatio * 100).toFixed(0) + "% 对 " + (plain.worstRatio * 100).toFixed(0) + "%。" +
-        (dd < 0 ? "回撤更深是因为那一层 TQQQ——把它调到 0 就能看到差别。" : "");
-    }
-    renderSteadyPlan();
-    renderSteadyFacts();
-  }
-
-  function renderSteadyPlan() {
-    var s = state.series;
-    if (!s || !s.hasSpy) return;
-    var amt = state.cfg.baseAmount;
-    var pl = DCA.steadyPlan(s, state.st, holding, amt);
-    if (!pl) return;
-    $("stAmt").textContent = money(amt, true);
-    var host = $("stPlanTiles");
-    host.textContent = "";
-    ASSETS.forEach(function (a, i) {
-      var t = tileInto(host, a.name + "（" + a.full + "）", money(pl.buy[i], true),
-        "约 " + pl.shares[i].toFixed(3) + " 股 · 现价 " + money(pl.prices[i], true));
-      t.style.borderLeft = "3px solid " + a.color;
-    });
-    var note = $("stPlanNote");
-    if (!(pl.total > 0)) {
-      note.textContent = "还没填持仓，所以这次就按目标配比直接分。上面「我的持仓」填了股数以后，这里会优先把钱补给最落后的那一层——平时就不用卖了。";
-      return;
-    }
-    var txt = "现在的实际占比：SPY " + pl.weightsNow[0].toFixed(1) + "% · QQQ " + pl.weightsNow[1].toFixed(1) +
-      "% · TQQQ " + pl.weightsNow[2].toFixed(1) + "%（组合 " + money(pl.total) + "）。这次的钱优先补最落后的那一层，买完变成 " +
-      pl.weightsAfter[0].toFixed(1) + " / " + pl.weightsAfter[1].toFixed(1) + " / " + pl.weightsAfter[2].toFixed(1) + "。";
-    var drift = Math.abs(pl.maxDrift);
-    if (pl.needRebalance) {
-      txt += " 偏离已经到 " + drift.toFixed(1) + " 个点，超过你设的 " + pl.band + " 个点，光靠新钱补不回来了——该真的调一次仓。";
-    } else if (drift >= 5 && pl.rebalance === "yearly") {
-      txt += " 偏离已经有 " + drift.toFixed(1) + " 个点，一次定投的钱补不回来，等今年的年度再平衡一起调。";
-    } else if (drift >= 5 && pl.rebalance === "never") {
-      txt += " 偏离有 " + drift.toFixed(1) + " 个点；你选了「从不卖」，所以它会一直偏下去，这是这个选项本来的样子。";
-    }
-    note.textContent = txt;
-  }
-
-  function renderSteadyFacts() {
-    var ul = $("stFacts");
-    if (!ul || ul.childNodes.length) return;
-    function add(t, d) {
-      var li = el("li");
-      li.appendChild(el("b", null, t));
-      li.appendChild(el("span", null, d));
-      ul.appendChild(li);
-    }
-    add("它故意不择时",
-      "不看均线、不看回撤、不加码。回测里所有「聪明」的信号换个年代就失效，所以这套干脆不猜，只靠配比和时间。");
-    add("再平衡在真实账户里是有代价的",
-      "每卖一次都有点差和手续费，在应税账户里还是一次应税事件。所以默认是一年一次，平时只用新钱去补最落后的那层，不卖。");
-    add("SPY 和 QQQ 本来就重叠很多",
-      "纳指100 的大公司也在标普500 里。加 SPY 不是为了「再买一次科技股」，是为了把非科技的那部分也买上，少押注一个行业。");
-    add("TQQQ 那一层要当成可能归零",
-      "3 倍杠杆遇到 2000—2002 那种连跌会跌掉 99% 以上，而且回不来。默认只给 10%，是「亏光也不影响生活」的量。");
-    add("这段历史并不支持「加 SPY 更稳」",
-      "1999 年以来，稳妥模式的年化和只买 QQQ 几乎一样，最大回撤反而更深一点——SPY 分散掉的风险，被那 10% TQQQ 又加了回来。滚动 10 年看也是平手（平均差不到 0.1 个点，11 胜 7 负），而且输的那几段恰好是 2000—2003 年开始投的，正是最需要分散的时候。");
-    add("真正压低回撤的旋钮是 TQQQ，不是 SPY",
-      "把 TQQQ 调到 0（比如 60/40/0），年化会低 2 个多点，但最大回撤和最惨时的市值都明显更好看。上面改一下数字就能自己比。");
-    add("那为什么还留着 SPY",
-      "理由不是这段历史，是这段历史只有一个样本：过去 27 年恰好是美国科技股赢。押 20—30 年的话，把核心放宽一点，是为了万一下一个 27 年不长这样。这是取舍，不是免费的。");
-    add("60/30/10 只是一个起点",
-      "睡不着就把 SPY 调高、TQQQ 调低；这些数字在上面随时能改，改完整张表和曲线会跟着重算。");
-  }
-
-  // ================= 每年固定投一笔 =================
-  var annual = { amount: 100000, startYear: 0 };
-  var AN_MODES = ["lump", "plainQ", "dip", "steady"];
-
-  function bindAnnual() {
-    try {
-      var v = JSON.parse(localStorage.getItem(ANNUAL_KEY) || "null");
-      if (v && typeof v === "object") {
-        if (v.amount > 0) annual.amount = v.amount;
-        if (v.startYear > 0) annual.startYear = v.startYear;
-      }
-    } catch (e) { /* 忽略 */ }
-    var s = state.series;
-    var first = +s.dates[0].slice(0, 4), last = +s.dates[s.n - 1].slice(0, 4);
-    var sel = $("anYear");
-    sel.textContent = "";
-    for (var y = first; y <= last - 2; y++) {
-      var o = document.createElement("option");
-      o.value = y; o.textContent = y + " 年";
-      sel.appendChild(o);
-    }
-    if (!(annual.startYear >= first && annual.startYear <= last - 2)) annual.startYear = first;
-    sel.value = String(annual.startYear);
-    $("anAmount").value = annual.amount;
-    function read() {
-      annual.amount = Math.max(1, +$("anAmount").value || 0);
-      annual.startYear = +$("anYear").value;
-      try { localStorage.setItem(ANNUAL_KEY, JSON.stringify(annual)); } catch (e) { /* 忽略 */ }
-      renderAnnual();
-    }
-    $("anAmount").addEventListener("change", read);
-    sel.addEventListener("change", read);
-  }
-
-  function renderAnnual() {
-    var s = state.series, cfg = state.cfg;
-    var tb = $("anTable").tBodies[0];
-    tb.textContent = "";
-    var res = [];
-    for (var i = 0; i < AN_MODES.length; i++) {
-      var r = DCA.annualBacktest(s, cfg, {
-        amount: annual.amount, startYear: annual.startYear, mode: AN_MODES[i],
-        steady: state.st, dd: cache.dd, tl: cache.tl,
+    function idx() { return Math.max(0, Math.min(n - 1, Math.round(pos * (n - 1)))); }
+    function draw() {
+      if (!rows || $("p-backtest").hidden) return;
+      var s = state.series, k = hover >= 0 ? hover : idx(), shownTo = idx();
+      W = Math.max(320, $("pChart").clientWidth || 900);
+      H = W < 560 ? 230 : 300; L = W < 560 ? 46 : 56;
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("height", H);
+      var iw = W - L - R, ih = H - T - B;
+      // 纵轴跟着已经播到的最高值走（播放时平滑放大）
+      var target = 1;
+      rows.forEach(function (x) { for (var i = 0; i <= shownTo; i += Math.max(1, Math.floor(shownTo / 400))) if (x.r.curve[i] > target) target = x.r.curve[i]; if (x.r.curve[shownTo] > target) target = x.r.curve[shownTo]; });
+      target = niceMax(target * 1.08);
+      yMax = playing ? yMax + (target - yMax) * 0.12 : target;
+      if (!(yMax > 0)) yMax = target;
+      var X = function (i) { return L + iw * i / Math.max(1, n - 1); };
+      var Y = function (v) { return T + ih * (1 - Math.min(1.02, v / yMax)); };
+      svg.textContent = "";
+      [0, 0.25, 0.5, 0.75, 1].forEach(function (f) {
+        var v = yMax * f;
+        svg.appendChild(ns("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v), class: f === 0 ? "axis" : "grid" }));
+        var t = ns("text", { x: L - 8, y: Y(v) + 4, "text-anchor": "end", class: "tick" }); t.textContent = fmtAxis(v); svg.appendChild(t);
       });
-      if (r) res.push(r);
+      var f0 = rows[0].r.firstIdx, lastYr = null, every = n > 5000 ? 4 : n > 2000 ? 2 : 1;
+      for (var j = 0; j < n; j += 5) {
+        var yr = s.dates[f0 + j].slice(0, 4);
+        if (yr !== lastYr) { lastYr = yr; if (+yr % (every * (W < 560 ? 2 : 1)) === 0 && j > 20) { var tt = ns("text", { x: X(j), y: H - 6, "text-anchor": "middle", class: "tick" }); tt.textContent = yr; svg.appendChild(tt); } }
+      }
+      // 大事件
+      var evNow = "";
+      EVENTS.forEach(function (ev) {
+        var ei = -1;
+        for (var q = 0; q < n; q += 1) if (s.dates[f0 + q] >= ev.d) { ei = q; break; }
+        if (ei < 0 || ei > shownTo) return;
+        var g = ns("g", { class: "ev" });
+        g.appendChild(ns("line", { x1: X(ei), x2: X(ei), y1: T, y2: T + ih }));
+        if (W >= 560) { var tx = ns("text", { x: X(ei) + 4, y: T + 10 }); tx.textContent = ev.t; g.appendChild(tx); }
+        svg.appendChild(g);
+        if (shownTo - ei < n * 0.05) evNow = ev.t;
+      });
+      // 已投入（只买 QQQ 那条的投入）
+      var step = Math.max(1, Math.floor(n / 900));
+      var inv = "";
+      for (var i2 = 0; i2 <= shownTo; i2 += step) inv += (i2 ? "L" : "M") + X(i2).toFixed(1) + " " + Y(invAt(rows[0].r, i2)).toFixed(1);
+      inv += "L" + X(shownTo).toFixed(1) + " " + Y(invAt(rows[0].r, shownTo)).toFixed(1);
+      svg.appendChild(ns("path", { d: inv, fill: "none", stroke: "var(--muted)", "stroke-width": 1.2, "stroke-dasharray": "3 3" }));
+      rows.slice().reverse().forEach(function (x) {
+        var d = "";
+        for (var i = 0; i <= shownTo; i += step) d += (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(x.r.curve[i]).toFixed(1);
+        d += "L" + X(shownTo).toFixed(1) + " " + Y(x.r.curve[shownTo]).toFixed(1);
+        svg.appendChild(ns("path", { d: d, fill: "none", stroke: x.color, "stroke-width": x.mine ? 2.6 : 1.8, "stroke-linejoin": "round", "stroke-dasharray": x.dim ? "5 3" : "none" }));
+        svg.appendChild(ns("circle", { cx: X(shownTo), cy: Y(x.r.curve[shownTo]), r: x.mine ? 4.5 : 3.5, fill: x.color, stroke: "var(--card)", "stroke-width": 2 }));
+      });
+      if (hover >= 0) svg.appendChild(ns("line", { x1: X(hover), x2: X(hover), y1: T, y2: T + ih, stroke: "var(--ink-2)", "stroke-width": 1 }));
+      // 顶部读数
+      $("pDate").textContent = cnYM(s.dates[f0 + k]);
+      $("pEvent").textContent = hover >= 0 ? "" : evNow;
+      var lg = $("pLegend"); lg.textContent = "";
+      var hd = el("div"); hd.appendChild(el("span", "nm", "")); hd.appendChild(el("span", "iv small", "投入")); hd.appendChild(el("span", "vv small", "市值")); hd.lastChild.style.fontWeight = "400"; lg.appendChild(hd);
+      rows.forEach(function (x) {
+        var dv = el("div"); var ky = el("i", "key"); ky.style.background = x.color; ky.style.marginRight = "0"; dv.appendChild(ky);
+        dv.appendChild(el("span", "nm", x.name.replace("（你的规则）", "").replace("对照：", "")));
+        dv.appendChild(el("span", "iv num", money(invAt(x.r, k))));
+        dv.appendChild(el("span", "vv num", money(x.r.curve[k])));
+        lg.appendChild(dv);
+      });
+      $("pSeek").value = Math.round(pos * 1000);
     }
-    if (!res.length) return;
-    var best = Math.max.apply(null, res.map(function (r) { return r.valueLocal; }));
-    res.forEach(function (r) {
-      var tr = el("tr", r.mode === "dip" ? "em" : null);
-      tr.appendChild(el("td", "label", r.modeName));
-      tr.appendChild(el("td", null, yuan(r.investedLocal)));
-      var tdv = el("td", r.valueLocal === best ? "best" : null, yuan(r.valueLocal));
-      tdv.appendChild(el("span", "note", money(r.value)));
-      tr.appendChild(tdv);
-      tr.appendChild(el("td", null, pct(r.xirrLocal, 2)));
-      tr.appendChild(el("td", null, pct(r.xirrUsd, 2)));
-      tr.appendChild(el("td", null, pctRaw(r.maxDrawdown)));
-      var tdw = el("td", null, (r.worstRatio * 100).toFixed(0) + "%");
-      tdw.appendChild(el("span", "note", cnDate(r.worstRatioDate)));
-      tr.appendChild(tdw);
-      tb.appendChild(tr);
+    function frame(ts) {
+      if (!playing) return;
+      var dt = last ? Math.min(0.1, (ts - last) / 1000) : 0; last = ts;
+      var dur = 26 / (+$("pSpeed").value || 1);
+      pos = Math.min(1, pos + dt / dur);
+      draw();
+      if (pos >= 1) { stop(); return; }
+      raf = requestAnimationFrame(frame);
+    }
+    function icon(p) { $("pIcon").innerHTML = p ? '<path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"></path>' : '<path d="M4 2.5v11l9-5.5z" fill="currentColor"></path>'; $("pPlay").setAttribute("aria-label", p ? "暂停" : "播放"); }
+    function play() {
+      if (!rows) return;
+      started = true; $("pCover").hidden = true;
+      if (pos >= 1) { pos = 0; yMax = 1; }
+      hover = -1;
+      if (reduce) { pos = 1; draw(); return; }
+      playing = true; last = 0; icon(true); raf = requestAnimationFrame(frame);
+    }
+    function stop() { playing = false; cancelAnimationFrame(raf); icon(false); if (pos >= 1) { $("pStartText").textContent = "再看一遍"; $("pCover").hidden = false; } draw(); }
+    $("pStart").addEventListener("click", function () { pos = 0; yMax = 1; play(); });
+    $("pPlay").addEventListener("click", function () { playing ? stop() : play(); });
+    $("pSeek").addEventListener("input", function () { started = true; $("pCover").hidden = true; if (playing) { playing = false; cancelAnimationFrame(raf); icon(false); } pos = +$("pSeek").value / 1000; hover = -1; draw(); });
+    $("pChart").addEventListener("pointermove", function (e) {
+      if (playing || !rows) return;
+      var rc = svg.getBoundingClientRect(), x = (e.clientX - rc.left) * (W / rc.width);
+      var i = Math.round((x - L) / (W - L - R) * (n - 1));
+      hover = i < 0 || i > idx() ? -1 : i; draw();
     });
-    var dip = res.filter(function (r) { return r.mode === "dip"; })[0];
-    var plain = res.filter(function (r) { return r.mode === "plainQ"; })[0];
-    if (dip && plain) {
-      $("anVerdict").textContent = "每年投 " + yuan(annual.amount) + "，从 " + dip.startYear + " 年投到 " +
-        cnDate(dip.endDate) + "：一共投进去 " + yuan(dip.investedLocal) + "，大跌才买 TQQQ 到今天是 " +
-        yuan(dip.valueLocal) + "，只买 QQQ 是 " + yuan(plain.valueLocal) + "。代价是最难熬的时候（" +
-        cnDate(dip.worstRatioDate) + "）账户只剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%。";
-    }
-    var notes = $("anNotes");
-    notes.textContent = "";
-    function note(t) { notes.appendChild(el("li", null, t)); }
-    note("四种做法每年投的钱一模一样，只是分配不同：大跌才买那套在大跌的周多投、平时少投，年度总额不变。所以这不是靠多投钱赢的。");
-    note("汇率用当年人民币兑美元的年平均价换算，今天按 " + res[0].nowRate + " 折回人民币。人民币这些年升值了，所以人民币年化比美元年化低半个多点。");
-    note("第一年和最后一年通常不是整年，按实际定投次数占一年的比例摊。");
-    note("没算美股分红预扣税（中国居民 10%）、券商佣金和换汇成本，实际到手会比这个数低一点。");
-  }
+    $("pChart").addEventListener("pointerleave", function () { if (hover >= 0) { hover = -1; draw(); } });
+    return { setData: setData, draw: draw };
+  })();
 
-  // ================= 我的买入记录 =================
+  // ============ 我的记录 ============
   var trades = [];
-  function saveTrades() {
-    try { localStorage.setItem(TRADES_KEY, JSON.stringify(trades)); } catch (e) { /* 忽略 */ }
-  }
-  function jMsg(t) {
-    $("jMsg").textContent = t || "";
-    if (t) setTimeout(function () { if ($("jMsg").textContent === t) $("jMsg").textContent = ""; }, 4000);
+  function saveTrades() { store(TRADES_KEY, trades); }
+  function jMsg(t) { $("jMsg").textContent = t || ""; if (t) setTimeout(function () { if ($("jMsg").textContent === t) $("jMsg").textContent = ""; }, 4000); }
+  function backupText() { return DCA.formatTradesBackup(trades, { today: new Date().toISOString().slice(0, 10), siteUrl: SITE_URL }); }
+  function mailHref(to, bk) { return "mailto:" + encodeURIComponent(to) + "?subject=" + encodeURIComponent(bk.subject) + "&body=" + encodeURIComponent(bk.body); }
+  function boxMode(importing) {
+    $("jBox").hidden = false;
+    $("jDoImport").hidden = !importing; $("jCopy").hidden = importing; $("jMail").hidden = importing; $("jMailField").hidden = importing;
   }
   function bindJournal() {
-    try {
-      var v = JSON.parse(localStorage.getItem(TRADES_KEY) || "null");
-      if (Array.isArray(v)) trades = v.filter(function (t) { return t && t.date; });
-    } catch (e) { /* 忽略 */ }
+    var v = load(TRADES_KEY);
+    if (Array.isArray(v)) trades = v.filter(function (t) { return t && t.date; });
     var s = state.series;
     $("jDate").value = s.dates[s.n - 1];
     $("jAsset").addEventListener("change", fillPrice);
     $("jDate").addEventListener("change", fillPrice);
-    fillPrice();
     $("jAdd").addEventListener("click", function () {
-      var d = $("jDate").value, a = +$("jAmount").value, p = +$("jPrice").value;
+      var d = $("jDate").value, a = +$("jAmount").value, p = +$("jPrice").value || +$("jPrice").placeholder;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return jMsg("日期填一下");
       if (!(a > 0)) return jMsg("金额要大于 0");
       if (!(p > 0)) return jMsg("成交价要大于 0");
-      trades.push({ id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
-        date: d, asset: $("jAsset").value, amount: a, price: p, note: $("jNote").value.trim() });
-      saveTrades();
-      $("jAmount").value = ""; $("jNote").value = "";
-      renderJournal();
-      jMsg("加好了");
+      trades.push({ id: Date.now() + "-" + Math.random().toString(36).slice(2, 7), date: d, asset: $("jAsset").value, amount: a, price: p, note: "" });
+      saveTrades(); $("jAmount").value = ""; $("jPrice").value = "";
+      renderJournal(); jMsg("记好了");
     });
     $("jBackup").addEventListener("click", function () {
       if (!trades.length) return jMsg("还没有记录");
-      var bk = DCA.formatTradesBackup(trades, { today: new Date().toISOString().slice(0, 10), siteUrl: SITE_URL });
-      $("jText").value = bk.body;
-      $("jBox").hidden = false;
-      $("jDoImport").hidden = true; $("jCopy").hidden = false; $("jMail").hidden = false; $("jMailField").hidden = false;
-      var mail = localStorage.getItem(EMAIL_KEY) || "";
-      $("jEmail").value = mail;
-      $("jMail").href = "mailto:" + encodeURIComponent(mail) + "?subject=" + encodeURIComponent(bk.subject) +
-        "&body=" + encodeURIComponent(bk.body);
-      jMsg("备份生成好了，" + bk.count + " 笔");
+      var bk = backupText(), mail = "";
+      try { mail = localStorage.getItem(EMAIL_KEY) || ""; } catch (e) { /* 忽略 */ }
+      $("jText").value = bk.body; $("jEmail").value = mail; $("jMail").href = mailHref(mail, bk);
+      boxMode(false); jMsg("备份生成好了，" + bk.count + " 笔");
     });
     $("jEmail").addEventListener("change", function () {
       var v2 = $("jEmail").value.trim();
       try { localStorage.setItem(EMAIL_KEY, v2); } catch (e) { /* 忽略 */ }
-      var bk = DCA.formatTradesBackup(trades, { today: new Date().toISOString().slice(0, 10), siteUrl: SITE_URL });
-      $("jMail").href = "mailto:" + encodeURIComponent(v2) + "?subject=" + encodeURIComponent(bk.subject) +
-        "&body=" + encodeURIComponent(bk.body);
+      $("jMail").href = mailHref(v2, backupText());
     });
     $("jPaste").addEventListener("click", function () {
-      $("jText").value = "";
-      $("jText").placeholder = "把备份邮件里的内容整段粘贴到这里（连横线一起）";
-      $("jBox").hidden = false;
-      $("jDoImport").hidden = false; $("jCopy").hidden = true; $("jMail").hidden = true; $("jMailField").hidden = true;
-      $("jText").focus();
+      $("jText").value = ""; $("jText").placeholder = "把备份邮件里的内容整段粘贴到这里（连横线一起）";
+      boxMode(true); $("jText").focus();
     });
     $("jDoImport").addEventListener("click", function () {
       var list;
-      try { list = DCA.parseTradesBackup($("jText").value); }
-      catch (e) { return jMsg("导入失败：" + e.message); }
-      var seen = {};
+      try { list = DCA.parseTradesBackup($("jText").value); } catch (e) { return jMsg("导入失败：" + e.message); }
+      var seen = {}, added = 0;
       trades.forEach(function (t) { seen[t.date + "|" + DCA.assetOf(t.asset) + "|" + t.amount + "|" + t.price] = 1; });
-      var added = 0;
       list.forEach(function (t) {
         if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(String(t.date)) || !(+t.amount > 0) || !(+t.price > 0)) return;
         var key = t.date + "|" + DCA.assetOf(t.asset) + "|" + (+t.amount) + "|" + (+t.price);
         if (seen[key]) return;
         seen[key] = 1; added++;
-        trades.push({ id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
-          date: t.date, asset: DCA.assetOf(t.asset), amount: +t.amount, price: +t.price, note: t.note || "" });
+        trades.push({ id: Date.now() + "-" + Math.random().toString(36).slice(2, 7), date: t.date, asset: DCA.assetOf(t.asset), amount: +t.amount, price: +t.price, note: t.note || "" });
       });
-      saveTrades(); renderJournal();
-      $("jBox").hidden = true;
+      saveTrades(); renderJournal(); $("jBox").hidden = true;
       jMsg(added ? "导入了 " + added + " 笔（重复的已跳过）" : "没有新记录，可能都已经有了");
     });
     $("jCopy").addEventListener("click", function () {
-      $("jText").select();
-      try { document.execCommand("copy"); jMsg("复制好了"); } catch (e) { jMsg("复制失败，手动选中吧"); }
+      var t = $("jText");
+      if (navigator.clipboard) navigator.clipboard.writeText(t.value).then(function () { jMsg("复制好了"); }, function () { t.select(); jMsg("手动复制一下吧"); });
+      else { t.select(); jMsg("已选中，按 Ctrl+C 复制"); }
     });
     $("jClose").addEventListener("click", function () { $("jBox").hidden = true; });
   }
-
   function fillPrice() {
-    var s = state.series, i = s.n - 1;
-    var a = $("jAsset").value;
-    var d = $("jDate").value;
-    // 填的日期在数据范围里就用那天的收盘价，否则用最新收盘价
-    var idx = i;
+    var s = state.series, d = $("jDate").value, a = $("jAsset").value, idx = s.n - 1;
     for (var k = 0; k < s.n; k++) if (s.dates[k] === d) { idx = k; break; }
-    var px = a === "TQQQ" ? s.t[idx] : a === "SPY" ? s.spy[idx] : s.close[idx];
+    var px = a === "TQQQ" ? s.t[idx] : s.close[idx];
     if (px > 0) $("jPrice").placeholder = px.toFixed(2);
     var sug = DCA.suggestionForDate(s, state.cfg, d, { dd: cache.dd, tl: cache.tl });
-    $("jHint").textContent = sug
-      ? "按 " + cnDate(sug.basedOn) + " 收盘判断，" + cnDate(sug.date) + " 规则说：投 " + money(sug.amount, true) +
-        " 买 " + sug.asset + "（" + sug.multiplier + " 倍，离最高点跌了 " + pctRaw(sug.drawdown) + "）。成交价不填就按收盘价算。"
-      : "成交价不填就按当天收盘价算。";
+    $("jHint").textContent = sug ? cnDate(sug.date) + " 规则说：投 " + moneyS(sug.amount) + " 买 " + sug.asset + "。成交价不填就按收盘价算。" : "成交价不填就按当天收盘价算。";
   }
-
+  function kpi(host, k, v, s2) { var d = el("div", "kpi"); d.appendChild(el("span", "k", k)); d.appendChild(el("span", "v num", v)); if (s2) d.appendChild(el("span", "s", s2)); host.appendChild(d); }
   function renderJournal() {
-    var s = state.series;
-    var r = DCA.summarizeTrades(s, state.cfg, trades);
-    $("jResult").hidden = !r.count;
+    var s = state.series, r = DCA.summarizeTrades(s, state.cfg, trades);
     fillPrice();
+    $("jResult").hidden = !r.count; $("jEmpty").hidden = !!r.count;
     if (!r.count) return;
-    var tiles = $("jTiles");
-    tiles.textContent = "";
-    tileInto(tiles, "一共投入", money(r.invested), r.count + " 笔");
-    tileInto(tiles, "现在值", money(r.value), (r.profit >= 0 ? "赚 " : "亏 ") + money(Math.abs(r.profit)));
-    tileInto(tiles, "总收益率", pct(r.totalReturn, 1, true), isFinite(r.xirr) ? "年化 " + pct(r.xirr, 2) : "");
-    tileInto(tiles, "TQQQ 占比", r.tqqqShare.toFixed(1) + "%", "上限 " + state.cfg.tqqqCap + "%");
-    $("jVerdict").textContent = "持仓：" + r.holdings.map(function (h) {
-      return h.asset + " " + h.shares.toFixed(3) + " 股（均价 " + money(h.avgCost, true) + "，现值 " + money(h.value) + "）";
-    }).join("；") + "。" + (r.compared
-      ? " 这些记录里有 " + r.sameAsset + "/" + r.compared + " 笔买的标的和规则一致，" + r.followed + "/" + r.compared + " 笔金额也差不多。"
-      : "");
-    var tb = $("jTable").tBodies[0];
-    tb.textContent = "";
+    var host = $("jKpis"); host.textContent = "";
+    kpi(host, "一共投了", money(r.invested), r.count + " 笔");
+    kpi(host, "现在市值", money(r.value), (r.profit >= 0 ? "赚 " : "亏 ") + money(Math.abs(r.profit)));
+    kpi(host, "年化收益", isFinite(r.xirr) ? pct(r.xirr, 1) : "—", "总收益 " + pct(r.totalReturn, 1, true));
+    kpi(host, "按规则执行", r.compared ? r.sameAsset + " / " + r.compared : "—", "买的标的和规则一致");
+    var tb = $("jTable").tBodies[0]; tb.textContent = "";
     r.rows.slice().reverse().forEach(function (row) {
       var tr = el("tr");
-      tr.appendChild(el("td", "label", cnDate(row.date)));
-      var td1 = el("td");
-      var tag = el("span", "tag " + (row.asset === "TQQQ" ? "t" : row.asset === "SPY" ? "s" : "q"), row.asset);
-      td1.appendChild(tag);
-      if (row.note) td1.appendChild(el("span", "note", row.note));
-      tr.appendChild(td1);
-      tr.appendChild(el("td", null, money(row.amount, true)));
-      tr.appendChild(el("td", null, money(row.price, true)));
-      tr.appendChild(el("td", null, row.shares.toFixed(3)));
-      tr.appendChild(el("td", null, row.suggested == null ? "—"
-        : money(row.suggested, true) + " 买 " + row.suggestedAsset));
-      var tdx = el("td");
-      var del = el("button", "link-btn", "删掉");
-      del.type = "button";
-      del.addEventListener("click", function () {
-        trades = trades.filter(function (t) { return t.id !== row.id; });
-        saveTrades(); renderJournal(); jMsg("删掉了");
-      });
-      tdx.appendChild(del);
-      tr.appendChild(tdx);
-      tb.appendChild(tr);
+      tr.appendChild(el("td", "num", row.date));
+      var td1 = el("td"); td1.appendChild(el("span", "tag " + (row.asset === "TQQQ" ? "t" : row.asset === "SPY" ? "s" : ""), row.asset)); if (row.note) td1.appendChild(el("span", "sub", row.note)); tr.appendChild(td1);
+      tr.appendChild(el("td", "num", money(row.amount, true)));
+      tr.appendChild(el("td", "num", money(row.price, true)));
+      tr.appendChild(el("td", "num", row.shares.toFixed(3)));
+      tr.appendChild(el("td", null, row.suggested == null ? "—" : moneyS(row.suggested) + " 买 " + row.suggestedAsset));
+      var tdx = el("td"), del = el("button", "link", "删掉"); del.type = "button";
+      del.setAttribute("aria-label", "删掉 " + row.date + " 这笔");
+      del.addEventListener("click", function () { trades = trades.filter(function (t) { return t.id !== row.id; }); saveTrades(); renderJournal(); jMsg("删掉了"); });
+      tdx.appendChild(del); tr.appendChild(tdx); tb.appendChild(tr);
     });
   }
 
-  // ================= 我的持仓 =================
-  var holding = { spyShares: "", qqqShares: "", tqqqShares: "", cash: "" };
-  function saveHold() {
-    try { localStorage.setItem(HOLD_KEY, JSON.stringify(holding)); } catch (e) { /* 忽略 */ }
-  }
-  function loadHold() {
-    try {
-      var h = JSON.parse(localStorage.getItem(HOLD_KEY) || "null");
-      if (h && typeof h === "object") {
-        holding.spyShares = h.spyShares || "";
-        holding.qqqShares = h.qqqShares || "";
-        holding.tqqqShares = h.tqqqShares || "";
-        holding.cash = h.cash || "";
+  // ============ 设置 ============
+  function fillSettings() {
+    var c = state.cfg;
+    $("baseAmount").value = c.baseAmount;
+    $("when").value = c.frequency === "daily" ? "daily" : "w" + c.investWeekday;
+    $("dipThreshold").value = c.dipThreshold; $("tqqqCap").value = c.tqqqCap;
+    $("basis").value = c.basis; $("flowShare").value = c.flowShare; $("sellMode").value = c.sellMode;
+    $("sellPeakWithin").value = c.sellPeakWithin; $("sellTargetShare").value = c.sellTargetShare;
+    $("peakField").hidden = c.sellMode !== "peak";
+    var box = $("tiers"); box.textContent = "";
+    c.tiers.forEach(function (tier, i) {
+      var row = el("div", "tier-row");
+      row.appendChild(el("span", null, i === 0 ? "跌破均线就" : "离高点 ≥"));
+      if (i > 0) {
+        var a = document.createElement("input"); a.type = "number"; a.min = 1; a.max = 99; a.value = tier.drawdown; a.setAttribute("aria-label", "第 " + (i + 1) + " 档回撤（%）");
+        a.addEventListener("change", function () { tier.drawdown = +a.value; commit(); }); row.appendChild(a); row.appendChild(el("span", null, "% 时"));
       }
-    } catch (e) { /* 忽略 */ }
-  }
-  function bindHold() {
-    loadHold();
-    $("hS").value = holding.spyShares;
-    $("hQ").value = holding.qqqShares;
-    $("hT").value = holding.tqqqShares;
-    function read() {
-      holding.spyShares = $("hS").value;
-      holding.qqqShares = $("hQ").value;
-      holding.tqqqShares = $("hT").value;
-      saveHold();
-      $("lvQ").value = holding.qqqShares;
-      $("lvT").value = holding.tqqqShares;
-      renderHold();
-      renderSteadyPlan();
-      renderSignal();
-      renderLeverNow();
-    }
-    $("hS").addEventListener("input", read);
-    $("hQ").addEventListener("input", read);
-    $("hT").addEventListener("input", read);
-  }
-  function renderHold() {
-    var r = DCA.holdingsCheck(state.series, state.cfg, holding);
-    var box = $("holdResult");
-    if (!(r.total > 0)) { box.hidden = true; return; }
-    box.hidden = false;
-    var bar = $("holdBar");
-    bar.textContent = "";
-    var qw = 100 - r.tqqqShare;
-    var iq = el("i", "q"); iq.style.width = qw + "%";
-    var it = el("i", "t"); it.style.width = r.tqqqShare + "%";
-    bar.appendChild(iq); bar.appendChild(it);
-    bar.style.position = "relative";
-    var cap = el("i", "cap");
-    cap.style.position = "absolute";
-    cap.style.left = "calc(" + (100 - r.cap) + "% - 1px)";
-    cap.style.top = "0";
-    cap.style.width = "2px";
-    cap.title = "上限 " + r.cap + "%";
-    bar.appendChild(cap);
-    var tiles = $("holdTiles");
-    tiles.textContent = "";
-    function tile(l, v, s2) {
-      var t = el("div", "tile");
-      t.appendChild(el("div", "t-label", l));
-      t.appendChild(el("div", "t-value", v));
-      if (s2) t.appendChild(el("div", "t-sub", s2));
-      tiles.appendChild(t);
-    }
-    tile("组合市值", money(r.total), "QQQ " + money(r.qqqValue) + " · TQQQ " + money(r.tqqqValue));
-    tile("TQQQ 占比", r.tqqqShare.toFixed(1) + "%", "你设的上限是 " + r.cap + "%");
-    tile("最新价", money(r.qqqPrice, true), "TQQQ " + money(r.tqqqPrice, true) + "（" + cnDate(r.date) + "）");
-    var v = $("holdVerdict");
-    v.textContent = r.needRebalance
-      ? "TQQQ 超过上限了：卖掉约 " + r.overShares.toFixed(2) + " 股 TQQQ（约 " + money(r.overAmount) + "）换成 QQQ，就回到 " + r.cap + "%。"
-      : "TQQQ 占比在上限以内，不用动。";
-  }
-
-  // ================= 资金计划 =================
-  var DEFAULT_RATE = 6.71;
-  var plan = { cash: "", monthly: "", share: 30, weeks: 52, rate: DEFAULT_RATE, mode: "safe" };
-  function bindPlan() {
-    try {
-      var p = JSON.parse(localStorage.getItem(PLAN_KEY) || "null");
-      if (p && typeof p === "object") ["cash", "monthly", "share", "weeks", "rate", "mode"].forEach(function (k) { if (p[k] != null) plan[k] = p[k]; });
-    } catch (e) { /* 忽略 */ }
-    $("pCash").value = plan.cash; $("pMonthly").value = plan.monthly;
-    $("pShare").value = plan.share; $("pWeeks").value = plan.weeks; $("pRate").value = plan.rate;
-    function read() {
-      plan.cash = $("pCash").value; plan.monthly = $("pMonthly").value;
-      plan.share = +$("pShare").value; plan.weeks = +$("pWeeks").value; plan.rate = +$("pRate").value;
-      try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch (e) { /* 忽略 */ }
-      renderPlan();
-    }
-    ["pCash", "pMonthly", "pShare", "pRate"].forEach(function (id) { $(id).addEventListener("input", read); });
-    $("pWeeks").addEventListener("change", read);
-    function pick(m) {
-      plan.mode = m;
-      try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch (e) { /* 忽略 */ }
-      renderPlan();
-    }
-    $("pSafe").addEventListener("click", function () { pick("safe"); });
-    $("pAvg").addEventListener("click", function () { pick("avg"); });
-    $("pApply").addEventListener("click", function () {
-      var r = cache.plan;
-      if (!r) return;
-      state.cfg.baseAmount = Math.round((plan.mode === "safe" ? r.baseSafe : r.baseAvg) * 100) / 100;
-      commit();
+      row.appendChild(el("span", null, "投"));
+      var m = document.createElement("input"); m.type = "number"; m.min = 0; m.max = 20; m.step = 0.1; m.value = tier.multiplier; m.setAttribute("aria-label", "第 " + (i + 1) + " 档倍数");
+      m.addEventListener("change", function () { tier.multiplier = +m.value; commit(); }); row.appendChild(m); row.appendChild(el("span", null, "倍"));
+      box.appendChild(row);
     });
   }
-  function renderPlan() {
-    var mults = cache.mults || (cache.mults = DCA.periodMultipliers(state.series, state.cfg, { dd: cache.dd, tl: cache.tl }));
-    var nowM = cache.sig ? cache.sig.multiplier : 1;
-    var rateOk = +plan.rate > 0.1;
-    var r = DCA.planBudget(mults, {
-      cash: plan.cash, monthly: plan.monthly, share: plan.share, weeks: plan.weeks,
-      perWeek: isDaily() ? 5 : 1, rate: rateOk ? plan.rate : DEFAULT_RATE,
-    }, nowM);
-    cache.plan = r;
-    var has = (+plan.cash > 0) || (+plan.monthly > 0);
-    $("pVerdict").textContent = has
-      ? "拿出来投资的钱：现在这笔 " + yuan(+plan.cash * plan.share / 100) + "，每月新增 " + yuan(+plan.monthly * plan.share / 100) +
-        "。这次是 " + nowM + " 倍，两种算法给出的金额如下。"
-      : "填上你的闲钱，就能算出每次该投多少。";
-    $("pSafeAmt").textContent = money(r.nowSafe, true);
-    $("pSafeSub").textContent = "基础金额 " + money(r.baseSafe, true) + " · 约 " + yuan(r.nowSafeLocal) + "；按历史最难的一段也投不光";
-    $("pAvgAmt").textContent = money(r.nowAvg, true);
-    $("pAvgSub").textContent = "基础金额 " + money(r.baseAvg, true) + " · 约 " + yuan(r.nowAvgLocal) + "；长期平均刚好投完";
-    $("pSafe").setAttribute("aria-checked", plan.mode === "safe" ? "true" : "false");
-    $("pAvg").setAttribute("aria-checked", plan.mode === "avg" ? "true" : "false");
-    var b = plan.mode === "safe" ? r.baseSafe : r.baseAvg;
-    $("pApply").textContent = "把" + perWord() + "基础金额设为 " + money(b, true);
-    $("pApply").disabled = !has || !(b > 0);
-    var notes = $("pNotes");
-    notes.textContent = "";
-    function note(t) { notes.appendChild(el("li", null, t)); }
-    note("保守：历史上最难的一段里，" + perWord() + "按规则加码平均是 " + r.worstAvgMultiplier.toFixed(2) + " 倍，按这个算就不会把钱投光。");
-    note("平均：长期平均倍数是 " + r.avgMultiplier.toFixed(2) + " 倍；遇到连续加码要另外准备钱。");
-    note("汇率请按你换汇时的实际价格改；默认 " + DEFAULT_RATE + " 只是一个参考值" + (rateOk ? "。" : "（你填的汇率不对，先按默认值算）。"));
-    note("买 TQQQ 的钱也从这里出，不额外加钱——规则只是把这次的钱换个标的买。");
+  function commit() {
+    state.cfg = DCA.withDefaults(state.cfg);
+    store(CFG_KEY, state.cfg);
+    fillSettings(); renderAll();
+  }
+  function bindSettings() {
+    function read() {
+      var c = state.cfg, w = $("when").value;
+      c.baseAmount = +$("baseAmount").value;
+      c.frequency = w === "daily" ? "daily" : "weekly";
+      if (w !== "daily") c.investWeekday = +w.slice(1);
+      c.dipThreshold = +$("dipThreshold").value; c.tqqqCap = +$("tqqqCap").value;
+      c.basis = $("basis").value; c.flowShare = +$("flowShare").value; c.sellMode = $("sellMode").value;
+      c.sellPeakWithin = +$("sellPeakWithin").value; c.sellTargetShare = +$("sellTargetShare").value;
+      c.sellOnRecover = false;
+      commit();
+    }
+    ["baseAmount", "when", "dipThreshold", "tqqqCap", "basis", "flowShare", "sellMode", "sellPeakWithin", "sellTargetShare"].forEach(function (id) { $(id).addEventListener("change", read); });
+    $("resetCfg").addEventListener("click", function () {
+      state.cfg = DCA.withDefaults({}); commit();
+      $("cfgNote").textContent = "已恢复默认"; setTimeout(function () { $("cfgNote").textContent = ""; }, 2500);
+    });
+  }
+  function renderFacts() {
+    var s = state.series, box = $("facts"); box.textContent = "";
+    function add(t, d) { var dv = el("div"); dv.appendChild(el("b", null, t)); dv.appendChild(el("span", null, d)); box.appendChild(dv); }
+    var pk = 0, worst = 0;
+    for (var i = 0; i < s.n; i++) { if (s.t[i] > pk) pk = s.t[i]; if (pk > 0) worst = Math.min(worst, s.t[i] / pk - 1); }
+    add("TQQQ 只能当加码工具，不能长拿",
+      "1999 年一次性买入拿到今天，TQQQ 只有 " + (s.t[s.n - 1] / s.t[0]).toFixed(1) + " 倍，同期 QQQ 是 " + (s.adj[s.n - 1] / s.adj[0]).toFixed(1) +
+      " 倍——2000 年到 2009 年它最多跌掉 " + (Math.abs(worst) * 100).toFixed(2) + "%。所以一定要有占比上限。");
+    var dip = DCA.backtest(s, state.cfg, { mode: "dip", dd: cache.dd, tl: cache.tl }), plain = DCA.backtest(s, state.cfg, { mode: "plainQ", dd: cache.dd, tl: cache.tl });
+    if (dip && plain) add("最难的时候，账户只剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%",
+      "发生在 " + cnYM(dip.worstRatioDate) + "；市值最长连续 " + dip.underwaterYears.toFixed(1) + " 年低于投入。只买 QQQ 是 " + (plain.worstRatio * 100).toFixed(0) + "%。这是最容易放弃的时候。");
+    add("2010 年以前的 TQQQ 是模拟的", "TQQQ 2010 年 2 月才成立。之前的价格按「QQQ 日涨跌 × 3 − 杠杆成本」推算，系数用 2010 年以后的真实数据拟合。");
+    add("没算的成本，以及这不是投资建议", "手续费、换汇、分红预扣税都没算，卖出还可能要交税。过去 27 年是科技股大牛市，以后不一定这样。");
   }
 
-  // ================= 渲染全部 =================
+  // ============ 总渲染 ============
   function renderAll() {
     var s = state.series, cfg = state.cfg;
     cache.dd = DCA.drawdowns(s, cfg.basis).dd;
     cache.tl = DCA.trendLines(s, cfg.maWindow);
-    cache.zones = DCA.tqqqPeriods(s, cfg, { dd: cache.dd, tl: cache.tl });
-    cache.mults = null;
-    renderSignal();
-    renderZoneChart();
-    renderBacktest();
-    renderSteady();
-    renderLever();
-    renderRolling();
-    renderFacts();
-    renderAnnual();
-    renderHold();
-    renderJournal();
-    renderPlan();
+    cache.ci = cache.ci || DCA.cashIndex(s);
+    renderHome(); renderBacktest(); renderJournal(); renderFacts();
   }
-
   function fillYears() {
-    var s = state.series;
-    var first = +s.dates[0].slice(0, 4);
-    var last = +s.dates[s.n - 1].slice(0, 4);
-    var sel = $("btYear");
-    sel.textContent = "";
-    for (var y = first; y <= last - 3; y++) {
-      var o = document.createElement("option");
-      o.value = y; o.textContent = y + " 年";
-      sel.appendChild(o);
-    }
+    var s = state.series, first = +s.dates[0].slice(0, 4), last = +s.dates[s.n - 1].slice(0, 4), sel = $("btYear");
+    for (var y = first; y <= last - 3; y++) { var o = el("option", null, y + " 年"); o.value = y; sel.appendChild(o); }
     sel.value = String(first);
-    sel.addEventListener("change", function () { renderBacktest(); renderLeverBacktest(); });
+    sel.addEventListener("change", renderBacktest);
   }
-
-  function showNotice(t) {
-    $("noticeText").textContent = t;
-    $("notice").hidden = false;
-  }
-
   function init(data) {
     var s = DCA.prepare(data);
-    if (!s.n) { $("empty").hidden = false; return; }
+    if (!s.n) { $("empty").hidden = false; $("meta").textContent = ""; return; }
     state.series = s;
-    state.meta = data;
-    loadCfg();
+    var saved = load(CFG_KEY);
+    if (saved && typeof saved === "object") state.cfg = DCA.withDefaults(saved);
     var last = s.dates[s.n - 1];
-    $("meta").textContent = "行情更新到 " + cnDate(last) + "（美东收盘）· 来源：" + (data.source || "Yahoo Finance") +
-      " · TQQQ " + cnDate(data.firstRealTqqq || "2010-02-11") + " 之前是模拟数据";
+    $("meta").textContent = "行情更新到 " + cnMD(last) + " · 美东收盘";
     var lag = Math.round(Date.now() / DCA.DAY_MS) - DCA.dayNumber(last);
-    if (lag > 5) showNotice("行情停在 " + cnDate(last) + "，已经 " + lag + " 天没更新了。去 GitHub 仓库的 Actions 页面看看自动更新是不是失败了。");
-    // 风险条里的数字
-    var buyHold = s.t[s.n - 1] / s.t[0];
-    var qHold = s.adj[s.n - 1] / s.adj[0];
-    var pk = 0, worst = 0;
-    for (var i = 0; i < s.n; i++) { if (s.t[i] > pk) pk = s.t[i]; if (pk > 0) worst = Math.min(worst, s.t[i] / pk - 1); }
-    $("riskMult").textContent = buyHold.toFixed(1);
-    $("riskQ").textContent = qHold.toFixed(1);
-    $("riskDD").textContent = (Math.abs(worst) * 100).toFixed(2) + "%";
-    cache.simLine = "1999 年一次性买入拿到现在只有 " + buyHold.toFixed(1) + " 倍，同期 QQQ 是 " + qHold.toFixed(1) + " 倍。";
-    $("footData").textContent = "数据 " + s.dates[0] + " 至 " + last + "，共 " + s.n + " 个交易日。";
-    fillSettings();
-    bindSettings();
-    fillYears();
-    loadSteady();
-    fillSteady();
-    bindSteady();
-    bindAnnual();
-    bindHold();
-    bindLever();
-    bindJournal();
-    bindPlan();
-    $("app").hidden = false;
+    if (lag > 5) { $("notice").textContent = "行情停在 " + cnDate(last) + "，已经 " + lag + " 天没更新了，去 GitHub 仓库的 Actions 页面看看自动更新是不是失败了。"; $("notice").hidden = false; }
+    $("footData").textContent = "数据来源 " + (data.source || "Yahoo Finance") + "，" + s.dates[0] + " 至 " + last + "，每个美股交易日收盘后自动更新。";
+    fillYears(); fillSettings(); bindSettings(); bindHold(); bindJournal();
     renderAll();
+    showTab(location.hash.slice(1));
     var lastW = 0, timer = null;
-    var ro = new ResizeObserver(function (entries) {
-      var w = Math.round(entries[0].contentRect.width);
-      if (w === lastW) return;
-      lastW = w;
-      clearTimeout(timer);
-      timer = setTimeout(function () { renderZoneChart(); renderBacktest(); renderLeverBacktest(); }, 120);
-    });
-    ro.observe($("app"));
+    new ResizeObserver(function (en) {
+      var w = Math.round(en[0].contentRect.width);
+      if (w === lastW) return; lastW = w;
+      clearTimeout(timer); timer = setTimeout(function () { player.draw(); }, 100);
+    }).observe($("pChart"));
   }
-
+  showTab(location.hash.slice(1));
   fetch("data.json", { cache: "no-cache" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
     .then(init)
-    .catch(function (e) {
-      $("empty").hidden = false;
-      $("meta").textContent = "读取行情数据失败：" + e.message;
-    });
+    .catch(function (e) { $("empty").hidden = false; $("meta").textContent = "读取行情失败：" + e.message; });
 })();
 </script>
 </body>

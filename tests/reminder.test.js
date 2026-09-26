@@ -99,20 +99,15 @@ function flat(withSpy) {
   return { rows };
 }
 
-test("有 SPY 数据时，提醒里会带上稳妥模式的分法", () => {
-  const data = flat(true);
-  const out = buildReminder(data, { today: data.rows[data.rows.length - 1][0], force: true });
-  assert.equal(out.skip, false);
-  assert.match(out.body, /稳妥模式/);
-  assert.match(out.body, /SPY \$60\.00/);
-  assert.match(out.body, /TQQQ \$10\.00/);
-});
-
-test("没有 SPY 数据时，提醒里不提稳妥模式", () => {
-  const data = flat(false);
-  const out = buildReminder(data, { today: data.rows[data.rows.length - 1][0], force: true });
-  assert.equal(out.skip, false);
-  assert.ok(!/稳妥模式/.test(out.body));
+test("提醒只讲这周投多少、买什么、要不要卖，不再带稳妥模式和按风险调杠杆", () => {
+  for (const withSpy of [true, false]) {
+    const data = flat(withSpy);
+    const out = buildReminder(data, { today: data.rows[data.rows.length - 1][0], force: true });
+    assert.equal(out.skip, false);
+    assert.ok(!/稳妥模式/.test(out.body));
+    assert.ok(!/按风险调杠杆/.test(out.body));
+    assert.match(out.body, /这次投/);
+  }
 });
 
 test("提醒里会写清楚两个买入条件离得多远", () => {
@@ -134,13 +129,4 @@ test("卖出规则触发时，标题和正文都会提示", () => {
   const cap = buildReminder(data, { today, force: true });
   assert.ok(!/该减 TQQQ/.test(cap.title));
   assert.match(cap.body, /暂时不用卖/);
-});
-
-test("提醒里会带上「按风险调杠杆」两种信号的目标配比", () => {
-  const data = flat(true);
-  const out = buildReminder(data, { today: data.rows[data.rows.length - 1][0], force: true });
-  assert.match(out.body, /按风险调杠杆/);
-  assert.match(out.body, /波动率目标 30%/);
-  assert.match(out.body, /均线开关/);
-  assert.match(out.body, /目标杠杆 \*\*\d\.\d\d 倍\*\*/);
 });
