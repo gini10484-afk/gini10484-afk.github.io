@@ -439,7 +439,7 @@
   function mult(m) { return (Math.round(m * 100) / 100) + ""; }
 
   var CFG_KEY = "qqq-tqqq-config-v1", HOLD_KEY = "qqq-tqqq-holdings-v1", TRADES_KEY = "qqq-tqqq-trades-v1", EMAIL_KEY = "qqq-tqqq-backup-email";
-  var SITE_URL = "https://gini10484-afk.github.io/qqq-tqqq-dca/";
+  var SITE_URL = "https://gini10484-afk.github.io/";
   var state = { series: null, cfg: DCA.withDefaults({}) };
   var cache = {};
   function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 存不了就算了 */ } }
