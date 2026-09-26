@@ -12,6 +12,12 @@ function todayInNewYork(now) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
+// 仓库名就是 <用户名>.github.io 时，网站在根目录；否则在 /<仓库名>/ 下
+function siteUrl(owner, repo) {
+  if (String(repo).toLowerCase() === (String(owner) + ".github.io").toLowerCase()) return `https://${repo}/`;
+  return `https://${owner}.github.io/${repo}/`;
+}
+
 function fmtMoney(v) {
   return "$" + (v < 1000 ? v.toFixed(2) : Math.round(v).toLocaleString("en-US"));
 }
@@ -102,7 +108,7 @@ function buildReminder(data, opts) {
   lines.push(`美股开盘：北京时间 21:30（夏令时）/ 22:30（冬令时）。`);
   if (opts.owner && opts.repo) {
     lines.push("");
-    lines.push(`网站：https://${opts.owner}.github.io/${opts.repo}/`);
+    lines.push(`网站：${siteUrl(opts.owner, opts.repo)}`);
   }
   lines.push("");
   lines.push(`<sub>提醒按仓库里的默认基础金额 ${fmtMoney(cfg.baseAmount)} 算。你自己的金额只存在浏览器里，按上面的倍数乘一下就行。这不是投资建议。</sub>`);
@@ -139,4 +145,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { buildReminder, todayInNewYork };
+module.exports = { buildReminder, todayInNewYork, siteUrl };
