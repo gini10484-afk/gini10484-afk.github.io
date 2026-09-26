@@ -130,3 +130,12 @@ test("卖出规则触发时，标题和正文都会提示", () => {
   assert.ok(!/该减 TQQQ/.test(cap.title));
   assert.match(cap.body, /暂时不用卖/);
 });
+
+test("网址：用户主页仓库在根目录，其他仓库在子路径", () => {
+  const { siteUrl } = require("../scripts/weekly_reminder.js");
+  assert.equal(siteUrl("gini10484-afk", "gini10484-afk.github.io"), "https://gini10484-afk.github.io/");
+  assert.equal(siteUrl("gini10484-afk", "qqq-tqqq-dca"), "https://gini10484-afk.github.io/qqq-tqqq-dca/");
+  const data = flat(true);
+  const out = buildReminder(data, { today: data.rows[data.rows.length - 1][0], force: true, owner: "gini10484-afk", repo: "gini10484-afk.github.io" });
+  assert.match(out.body, /网站：https:\/\/gini10484-afk\.github\.io\/\n/);
+});
