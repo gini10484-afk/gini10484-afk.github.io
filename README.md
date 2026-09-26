@@ -1,6 +1,8 @@
 # QQQ + TQQQ 组合定投（平时买 QQQ，大跌才买 TQQQ）
 
-**网站地址：<https://gini10484-afk.github.io/qqq-tqqq-dca/>**
+**网站地址：<https://gini10484-afk.github.io/>**
+
+（2026-09-27 起仓库改名为 `gini10484-afk.github.io`，网址去掉了 `/qqq-tqqq-dca/`；旧网址会自动跳到新网址。）
 
 一个每天自动更新的小网站。打开它就能看到：
 
@@ -222,7 +224,7 @@ TQQQ 当日涨跌 = 3 × QQQ 当日涨跌 + 漂移 / 252
 
 ```bash
 node --test tests/strategy.test.js   # 规则、回测、上限、持仓、卖出信号、买入记录，以及库里保留的稳妥模式 / 年度定投 / 按风险调杠杆函数（47 项）
-node --test tests/reminder.test.js   # 定投日提醒（13 项）
+node --test tests/reminder.test.js   # 定投日提醒（14 项）
 python3 scripts/update_data.py       # 手动更新一次数据
 ```
 
