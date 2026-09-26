@@ -135,3 +135,12 @@ test("卖出规则触发时，标题和正文都会提示", () => {
   assert.ok(!/该减 TQQQ/.test(cap.title));
   assert.match(cap.body, /暂时不用卖/);
 });
+
+test("提醒里会带上「按风险调杠杆」两种信号的目标配比", () => {
+  const data = flat(true);
+  const out = buildReminder(data, { today: data.rows[data.rows.length - 1][0], force: true });
+  assert.match(out.body, /按风险调杠杆/);
+  assert.match(out.body, /波动率目标 30%/);
+  assert.match(out.body, /均线开关/);
+  assert.match(out.body, /目标杠杆 \*\*\d\.\d\d 倍\*\*/);
+});

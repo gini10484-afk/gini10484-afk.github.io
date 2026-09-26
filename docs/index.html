@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QQQ + TQQQ 组合定投</title>
-<meta name="description" content="平时定投 QQQ，大跌时买 TQQQ，并把 TQQQ 控制在组合上限以内：信号、回测和风险，每个美股交易日自动更新">
+<meta name="description" content="平时定投 QQQ，大跌时买 TQQQ，并把 TQQQ 控制在组合上限以内；另有按风险调杠杆（波动率目标 / 均线开关）：信号、回测和风险，每个美股交易日自动更新">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M5 23l6-5 4 3 4-8 3 5 5-11' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
   :root {
@@ -19,6 +19,7 @@
     --s-fixed: #1baf7a;    /* 每次固定比例买 TQQQ */
     --s-dip: #eb6834;      /* 大跌才买 TQQQ（本站主角） */
     --s-steady: #4a3aa7;   /* 稳妥模式·宽基打底 */
+    --s-lever: #c0398a;    /* 按风险调杠杆（波动率目标 / 均线开关） */
     --ramp-1: #86b6ef; --ramp-2: #5598e7; --ramp-3: #2a78d6; --ramp-4: #1c5cab; --ramp-5: #0d366b;
     --zone: rgba(235, 104, 52, 0.13);
     --warn-bg: #fdf3dc; --warn-border: #f0d58f; --warn-ink: #5c4200; --warn-icon: #fab219;
@@ -31,7 +32,7 @@
       --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
       --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
       --accent: #3987e5; --accent-ink: #86b6ef; --focus: #6da7ec;
-      --s-qqq: #a3a29b; --s-combo: #3987e5; --s-fixed: #199e70; --s-dip: #d95926; --s-steady: #9085e9;
+      --s-qqq: #a3a29b; --s-combo: #3987e5; --s-fixed: #199e70; --s-dip: #d95926; --s-steady: #9085e9; --s-lever: #c0398a;
       --ramp-1: #184f95; --ramp-2: #2a78d6; --ramp-3: #5598e7; --ramp-4: #86b6ef; --ramp-5: #b7d3f6;
       --zone: rgba(217, 89, 38, 0.20);
       --warn-bg: #2b2411; --warn-border: #5a4a1c; --warn-ink: #f3dfa8; --warn-icon: #fab219;
@@ -44,7 +45,7 @@
     --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
     --accent: #3987e5; --accent-ink: #86b6ef; --focus: #6da7ec;
-    --s-qqq: #a3a29b; --s-combo: #3987e5; --s-fixed: #199e70; --s-dip: #d95926; --s-steady: #9085e9;
+    --s-qqq: #a3a29b; --s-combo: #3987e5; --s-fixed: #199e70; --s-dip: #d95926; --s-steady: #9085e9; --s-lever: #c0398a;
     --ramp-1: #184f95; --ramp-2: #2a78d6; --ramp-3: #5598e7; --ramp-4: #86b6ef; --ramp-5: #b7d3f6;
     --zone: rgba(217, 89, 38, 0.20);
     --warn-bg: #2b2411; --warn-border: #5a4a1c; --warn-ink: #f3dfa8; --warn-icon: #fab219;
@@ -206,6 +207,12 @@
   .bar-track .q { background: var(--s-combo); }
   .bar-track .t { background: var(--s-dip); }
   .bar-track .c { background: var(--s-steady); }
+  .bar-track .k { background: var(--muted); }
+  .bar-track i + i:not(.cap) { box-shadow: inset 2px 0 0 var(--surface); }
+  .asset-pill.l { background: var(--s-lever); }
+  .tag.k { background: var(--muted); }
+  .lev-weights { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 14px; color: var(--ink-2); }
+  .lev-weights b { color: var(--ink); font-variant-numeric: tabular-nums; }
 
   textarea.backup { width: 100%; box-sizing: border-box; margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12px; line-height: 1.5; color: var(--ink); background: var(--surface); border: 1px solid var(--axis);
@@ -398,6 +405,109 @@
           </table>
         </div>
         <p class="small" id="sellTableNote"></p>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="lvTitle" id="lever">
+      <div class="section-head">
+        <div><h2 id="lvTitle">另一种做法：按风险调杠杆</h2>
+          <p class="sub">每次投一样多、不加码，只调 QQQ、TQQQ、现金三者的比例：纳指风平浪静时多拿杠杆，风大时少拿</p></div>
+      </div>
+      <div class="card settings">
+        <div class="settings-row">
+          <label class="field">用哪种信号
+            <select id="lvKind">
+              <option value="vol">波动率目标（推荐）</option>
+              <option value="ma">均线开关</option>
+            </select>
+          </label>
+          <label class="field lv-vol">目标波动
+            <span class="unit-input"><input id="lvTarget" class="narrow" type="number" min="5" max="80" step="5" inputmode="decimal"><span>%</span></span>
+          </label>
+          <label class="field lv-vol">杠杆上限
+            <span class="unit-input"><input id="lvMax" class="narrow" type="number" min="0.5" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
+          </label>
+          <label class="field lv-vol">杠杆下限
+            <span class="unit-input"><input id="lvMin" class="narrow" type="number" min="0" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
+          </label>
+          <label class="field lv-ma">均线上方
+            <span class="unit-input"><input id="lvOn" class="narrow" type="number" min="0" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
+          </label>
+          <label class="field lv-ma">均线下方
+            <span class="unit-input"><input id="lvOff" class="narrow" type="number" min="0" max="3" step="0.25" inputmode="decimal"><span>倍</span></span>
+          </label>
+          <label class="field lv-ma">缓冲带
+            <span class="unit-input"><span>±</span><input id="lvBuf" class="narrow" type="number" min="0" max="15" step="0.5" inputmode="decimal"><span>%</span></span>
+          </label>
+          <label class="field">偏离多少才调仓
+            <span class="unit-input"><input id="lvBand" class="narrow" type="number" min="1" max="100" step="5" inputmode="decimal"><span>%</span></span>
+          </label>
+          <button class="btn ghost" id="lvReset" type="button">恢复默认</button>
+        </div>
+        <p class="small" id="lvRule" style="margin-top:10px"></p>
+      </div>
+
+      <div class="card signal" style="margin-top:14px">
+        <h3 class="label">下一次（<span id="lvDate">—</span>）该配成</h3>
+        <div class="hero-row">
+          <div class="hero" id="lvHero">—</div>
+          <span class="asset-pill l" id="lvPill">杠杆</span>
+        </div>
+        <div class="bar-track" id="lvBar" aria-hidden="true"></div>
+        <div class="lev-weights" id="lvWeights"></div>
+        <p class="sig-explain" id="lvExplain"></p>
+        <div class="conds" id="lvConds"></div>
+        <div class="plan-form" style="margin-top:16px">
+          <label class="field">QQQ 股数
+            <span class="unit-input"><input id="lvQ" type="number" min="0" step="0.01" inputmode="decimal"><span>股</span></span>
+          </label>
+          <label class="field">TQQQ 股数
+            <span class="unit-input"><input id="lvT" type="number" min="0" step="0.01" inputmode="decimal"><span>股</span></span>
+          </label>
+          <label class="field">留着的现金
+            <span class="unit-input"><span>$</span><input id="lvC" type="number" min="0" step="10" inputmode="decimal"></span>
+          </label>
+        </div>
+        <div class="sell-box" id="lvBox">
+          <div class="sh">这次的钱怎么分、要不要调仓</div>
+          <div class="sv" id="lvVerdict">—</div>
+          <div class="sd" id="lvHow"></div>
+          <div class="sd" id="lvHow2"></div>
+        </div>
+        <p class="sig-foot small">股数、现金只存在你自己的浏览器里，和下面「我的持仓」共用。信号用的是上一个交易日的收盘价。</p>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <p class="verdict" id="lvVerdictBt" style="font-size:15px"></p>
+        <div class="table-wrap">
+          <table id="lvTable">
+            <thead>
+              <tr>
+                <th scope="col">做法</th><th scope="col">投入</th><th scope="col">现在市值</th><th scope="col">年化</th>
+                <th scope="col">最大回撤</th><th scope="col">最惨时<span class="note">市值/投入</span></th>
+                <th scope="col">每年调仓</th><th scope="col">平均杠杆</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="small" id="lvTableNote"></p>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="legend" id="lvCurveLegend"></div>
+        <div class="chart" id="lvCurveChart"></div>
+        <p class="small">纵轴是「市值 ÷ 已经投进去的钱」，1x 以下就是账面亏损。</p>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="legend"><span><i class="key area" style="background:var(--s-lever);opacity:.45"></i>实际杠杆（组合里 QQQ + 3 × TQQQ 占多少）</span></div>
+        <div class="chart" id="lvLevChart"></div>
+        <p class="small" id="lvLevNote"></p>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <ul class="facts" id="lvFacts"></ul>
       </div>
     </section>
 
@@ -671,8 +781,9 @@
   var ANNUAL_KEY = "qqq-tqqq-annual-v1";
   var TRADES_KEY = "qqq-tqqq-trades-v1";
   var EMAIL_KEY = "qqq-tqqq-backup-email";
+  var LEVER_KEY = "qqq-tqqq-lever-v1";
   var SITE_URL = "https://gini10484-afk.github.io/qqq-tqqq-dca/";
-  var state = { series: null, cfg: DCA.withDefaults({}), st: DCA.steadyDefaults({}), meta: null };
+  var state = { series: null, cfg: DCA.withDefaults({}), st: DCA.steadyDefaults({}), lv: DCA.leverDefaults({}), meta: null };
   var cache = {};
 
   function loadCfg() {
@@ -909,6 +1020,7 @@
     var foot = [];
     foot.push("美股开盘时间：北京时间 21:30（夏令时）/ 22:30（冬令时）。");
     foot.push("信号用的是上一个交易日的收盘价，不会偷看当天价格。");
+    foot.push("另一种回测里风险收益更好的做法（按风险调杠杆）在下面「另一种做法」。");
     $("sigFoot").textContent = foot.join(" ");
   }
 
@@ -1178,6 +1290,374 @@
     v.appendChild(el("b", null, avg.toFixed(2) + " 个百分点"));
     v.appendChild(document.createTextNode("，其中 " + win + " 段更高、" + (rows.length - win) + " 段更低；最差的一段是 " +
       worstRow.year + " 年开始，" + (worst >= 0 ? "高" : "低") + " " + Math.abs(worst).toFixed(2) + " 个百分点。"));
+  }
+
+  // ================= 按风险调杠杆 =================
+  var lvRaw = {};
+  function loadLever() {
+    try {
+      var v = JSON.parse(localStorage.getItem(LEVER_KEY) || "null");
+      if (v && typeof v === "object") lvRaw = v;
+    } catch (e) { /* 存不了就用默认 */ }
+    state.lv = DCA.leverDefaults(lvRaw);
+  }
+  function fillLever() {
+    var l = state.lv;
+    $("lvKind").value = l.kind;
+    $("lvTarget").value = l.volTarget;
+    $("lvMax").value = l.maxLev;
+    $("lvMin").value = l.minLev;
+    $("lvOn").value = l.maOnLev;
+    $("lvOff").value = l.maOffLev;
+    $("lvBuf").value = l.maBuffer;
+    $("lvBand").value = l.band;
+    var isVol = l.kind === "vol";
+    Array.prototype.forEach.call(document.querySelectorAll(".lv-vol"), function (e) { e.hidden = !isVol; });
+    Array.prototype.forEach.call(document.querySelectorAll(".lv-ma"), function (e) { e.hidden = isVol; });
+    $("lvQ").value = holding.qqqShares;
+    $("lvT").value = holding.tqqqShares;
+    $("lvC").value = holding.cash;
+  }
+  function bindLever() {
+    loadLever();
+    fillLever();
+    function read() {
+      lvRaw = {
+        kind: $("lvKind").value, volTarget: +$("lvTarget").value, maxLev: +$("lvMax").value, minLev: +$("lvMin").value,
+        maOnLev: +$("lvOn").value, maOffLev: +$("lvOff").value, maBuffer: +$("lvBuf").value, band: +$("lvBand").value,
+      };
+      state.lv = DCA.leverDefaults(lvRaw);
+      try { localStorage.setItem(LEVER_KEY, JSON.stringify(state.lv)); } catch (e) { /* 忽略 */ }
+      fillLever();
+      renderLever();
+    }
+    ["lvKind", "lvTarget", "lvMax", "lvMin", "lvOn", "lvOff", "lvBuf", "lvBand"].forEach(function (id) {
+      $(id).addEventListener("change", read);
+    });
+    $("lvReset").addEventListener("click", function () {
+      lvRaw = {};
+      state.lv = DCA.leverDefaults({});
+      try { localStorage.removeItem(LEVER_KEY); } catch (e) { /* 忽略 */ }
+      fillLever();
+      renderLever();
+    });
+    function readHold() {
+      holding.qqqShares = $("lvQ").value;
+      holding.tqqqShares = $("lvT").value;
+      holding.cash = $("lvC").value;
+      $("hQ").value = holding.qqqShares;
+      $("hT").value = holding.tqqqShares;
+      saveHold();
+      renderHold();
+      renderSteadyPlan();
+      renderSignal();
+      renderLeverNow();
+    }
+    ["lvQ", "lvT", "lvC"].forEach(function (id) { $(id).addEventListener("input", readHold); });
+  }
+
+  function levText(L) { return (Math.round(L * 100) / 100).toFixed(2).replace(/0$/, "").replace(/\.0$/, "") + " 倍"; }
+  var LV_PARTS = [
+    { name: "现金", cls: "k", color: "var(--muted)" },
+    { name: "QQQ", cls: "q", color: "var(--s-combo)" },
+    { name: "TQQQ", cls: "t", color: "var(--s-dip)" },
+  ];
+
+  function renderLever() {
+    var s = state.series, cfg = state.cfg, lv = state.lv;
+    cache.lvSig = DCA.leverSignals(s, cfg, lv, { tl: cache.tl });
+    cache.ci = cache.ci || DCA.cashIndex(s);
+    var rule = lv.kind === "vol"
+      ? "规则：每次定投前看纳指（QQQ）最近 " + lv.volWindow + " 个交易日的年化波动，杠杆 = " + lv.volTarget +
+        "% ÷ 最近波动，夹在 " + lv.minLev + "–" + lv.maxLev + " 倍之间。"
+      : "规则：QQQ 高过 " + cfg.maWindow + " 日均线 " + lv.maBuffer + "% 就用 " + lv.maOnLev + " 倍，低过 " + lv.maBuffer +
+        "% 才降回 " + lv.maOffLev + " 倍，中间维持原状（缓冲带防止来回换）。";
+    $("lvRule").textContent = rule + " 1 倍以上 = QQQ + TQQQ（2 倍就是一半 TQQQ 一半 QQQ）；1 倍以下 = QQQ + 现金。" +
+      "实际配比和目标的差（三项差额加总）超过 " + lv.band + "% 才真的调仓，平时只用新钱去补。设置只存在你的浏览器里。";
+    renderLeverNow();
+    renderLeverBacktest();
+    renderLeverFacts();
+  }
+
+  function renderLeverNow() {
+    var s = state.series, cfg = state.cfg, lv = state.lv;
+    if (!cache.lvSig) return;
+    var hasHold = (+holding.qqqShares > 0) || (+holding.tqqqShares > 0) || (+holding.cash > 0);
+    var st = DCA.leverStatus(s, cfg, lv, hasHold ? {
+      qqqShares: holding.qqqShares, tqqqShares: holding.tqqqShares, cash: holding.cash, amount: cfg.baseAmount,
+    } : null, { sig: cache.lvSig });
+    cache.lvStatus = st;
+    $("lvDate").textContent = cnDate(st.nextDate) + "（" + st.weekdayName + "）";
+    $("lvHero").textContent = levText(st.targetLever);
+    $("lvPill").textContent = st.kindName;
+    var bar = $("lvBar");
+    bar.textContent = "";
+    LV_PARTS.forEach(function (p, k) {
+      if (st.weights[k] <= 0.05) return;
+      var it = el("i", p.cls);
+      it.style.width = st.weights[k] + "%";
+      bar.appendChild(it);
+    });
+    var wbox = $("lvWeights");
+    wbox.textContent = "";
+    [1, 2, 0].forEach(function (k) {
+      var sp = el("span");
+      sp.appendChild(el("i", "tag " + LV_PARTS[k].cls, LV_PARTS[k].name));
+      sp.appendChild(document.createTextNode(" "));
+      sp.appendChild(el("b", null, st.weights[k].toFixed(0) + "%"));
+      wbox.appendChild(sp);
+    });
+    var ex = "按 " + cnDate(st.basedOn) + " 收盘：";
+    var cw = $("lvConds");
+    cw.textContent = "";
+    if (st.kind === "vol") {
+      ex += "QQQ 最近 " + lv.volWindow + " 个交易日的年化波动是 " + pctRaw(st.vol) + "，目标 " + lv.volTarget + "% ÷ " +
+        pctRaw(st.vol) + " = " + (lv.volTarget / st.vol).toFixed(2) + " 倍" +
+        (st.targetLever >= lv.maxLev - 1e-9 ? "，超过上限，按 " + lv.maxLev + " 倍算。" : st.targetLever <= lv.minLev + 1e-9 ? "，低于下限，按 " + lv.minLev + " 倍算。" : "。");
+      ex += st.vol < lv.volTarget ? " 市场比较平静，所以多拿杠杆。" : " 市场波动大，所以少拿杠杆。";
+      cw.appendChild(cond(st.vol <= st.volForMax, "波动 ≤ " + st.volForMax.toFixed(1) + "% → 顶到 " + lv.maxLev + " 倍",
+        "现在 " + pctRaw(st.vol) + (st.vol <= st.volForMax ? "，已经在这一档" : "")));
+      cw.appendChild(cond(st.vol > st.volForOne, "波动 > " + st.volForOne + "% → 降到 1 倍以下（开始拿现金）",
+        st.vol > st.volForOne ? "现在 " + pctRaw(st.vol) + "，已经在这一档" : "还差 " + (st.volForOne - st.vol).toFixed(1) + " 个点"));
+    } else {
+      ex += "QQQ 比 " + cfg.maWindow + " 日均线（" + money(st.ma, true) + "）" + (st.dev >= 0 ? "高 " : "低 ") + pctRaw(Math.abs(st.dev)) +
+        "，开关" + (st.maOn ? "打开" : "关着") + "，用 " + levText(st.targetLever) + "。";
+      if (st.lastChange) ex += " 上一次切换是 " + cnDate(st.lastChange) + "。";
+      cw.appendChild(cond(st.maOn, "开关" + (st.maOn ? "打开（" + lv.maOnLev + " 倍）" : "关着（" + lv.maOffLev + " 倍）"),
+        st.switchAt ? (st.maOn ? "QQQ 跌到 " + money(st.switchAt, true) + "（再跌 " + pctRaw(-st.switchGap) + "）才会关"
+          : "QQQ 涨到 " + money(st.switchAt, true) + "（再涨 " + pctRaw(st.switchGap) + "）才会开") : "均线数据还不够"));
+    }
+    $("lvExplain").textContent = ex;
+
+    var box = $("lvBox"), v = $("lvVerdict"), how = $("lvHow"), how2 = $("lvHow2");
+    var amt = cfg.baseAmount;
+    var w = st.weights;
+    if (!st.hold || !(st.hold.total > 0)) {
+      box.className = "sell-box";
+      v.textContent = "这次 " + money(amt, true) + "：QQQ " + money(amt * w[1] / 100, true) + " · TQQQ " + money(amt * w[2] / 100, true) +
+        (w[0] > 0.05 ? " · 现金 " + money(amt * w[0] / 100, true) : "");
+      how.textContent = "上面填了你现在的股数和现金，这里会优先把新钱补给最缺的那一层，并告诉你要不要真的调仓。";
+      how2.textContent = "";
+      return;
+    }
+    var h = st.hold;
+    var buyTxt = [1, 2, 0].filter(function (k) { return h.buy[k] > 0.005; }).map(function (k) {
+      return LV_PARTS[k].name + " " + money(h.buy[k], true) + (k > 0 ? "（约 " + h.buyShares[k].toFixed(2) + " 股）" : "");
+    }).join(" · ");
+    box.className = "sell-box" + (h.needRebalance ? " on" : "");
+    how.textContent = "现在：QQQ " + h.weightsNow[1].toFixed(0) + "% · TQQQ " + h.weightsNow[2].toFixed(0) + "% · 现金 " +
+      h.weightsNow[0].toFixed(0) + "%，实际杠杆 " + levText(h.leverNow) + "（组合 " + money(h.total) + "）。这次的 " +
+      money(h.amount, true) + " 先补最缺的：" + (buyTxt || "—") + "。";
+    if (h.needRebalance) {
+      v.textContent = "该调仓了（偏离 " + h.driftAfter.toFixed(0) + "%，超过 " + lv.band + "%）";
+      var parts = [];
+      [1, 2, 0].forEach(function (k) {
+        var t = h.trades[k];
+        if (Math.abs(t) < 1) return;
+        if (k === 0) { parts.push((t > 0 ? "留出现金 " : "动用现金 ") + money(Math.abs(t))); return; }
+        parts.push((t > 0 ? "买 " : "卖 ") + LV_PARTS[k].name + " " + money(Math.abs(t)) +
+          "（约 " + Math.abs(h.tradeShares[k]).toFixed(2) + " 股）");
+      });
+      how2.textContent = "投完新钱后再：" + parts.join("，") + "，就回到目标配比。每次卖出在应税账户里都是一次应税事件。";
+    } else {
+      v.textContent = "不用调仓，只投新钱";
+      how2.textContent = "投完后和目标差 " + h.driftAfter.toFixed(0) + "%，没到你设的 " + lv.band + "%，先不卖。";
+    }
+  }
+
+  function renderLeverBacktest() {
+    var s = state.series, cfg = state.cfg, lv = state.lv;
+    var start = $("btYear").value + "-01-01";
+    var pre = { tl: cache.tl, ci: cache.ci };
+    var plain = DCA.backtest(s, cfg, { mode: "plainQ", startDate: start, dd: cache.dd, tl: cache.tl });
+    var dip = DCA.backtest(s, cfg, { mode: "dip", startDate: start, dd: cache.dd, tl: cache.tl });
+    var mine = DCA.leverBacktest(s, cfg, lv, { startDate: start, sig: cache.lvSig, ci: cache.ci });
+    if (!plain || !mine) return;
+    var rows = [
+      { r: plain, name: "普通定投（只买 QQQ）", color: "var(--s-qqq)" },
+      { r: dip, name: "大跌才买 TQQQ（本站规则）", color: "var(--s-dip)" },
+    ];
+    var alts = [];
+    [20, 25, 30, 35].forEach(function (t) { alts.push({ kind: "vol", volTarget: t, minLev: 0.5, maxLev: 2, band: lv.band }); });
+    alts.push({ kind: "ma", maBuffer: 2, maOnLev: 2, maOffLev: 1, band: lv.band });
+    var mineShown = false;
+    alts.forEach(function (a) {
+      var d = DCA.leverDefaults(a);
+      var isMine = d.kind === lv.kind && (d.kind === "vol"
+        ? d.volTarget === lv.volTarget && d.minLev === lv.minLev && d.maxLev === lv.maxLev && d.volWindow === lv.volWindow
+        : d.maBuffer === lv.maBuffer && d.maOnLev === lv.maOnLev && d.maOffLev === lv.maOffLev);
+      var r = isMine ? mine : DCA.leverBacktest(s, cfg, d, Object.assign({ startDate: start }, pre));
+      if (isMine) mineShown = true;
+      rows.push({ r: r, name: (d.kind === "vol" ? "波动率目标 " + d.volTarget + "%" : "均线开关 ±" + d.maBuffer + "%（" + d.maOnLev + " 倍 / " + d.maOffLev + " 倍）"),
+        color: "var(--s-lever)", mine: isMine, lever: true });
+    });
+    if (!mineShown) rows.push({ r: mine, name: "你的设置：" + mine.modeName, color: "var(--s-lever)", mine: true, lever: true });
+    cache.lvBt = mine;
+    var tb = $("lvTable").tBodies[0];
+    tb.textContent = "";
+    var bestX = Math.max.apply(null, rows.map(function (x) { return x.r.xirr; }));
+    rows.forEach(function (x) {
+      var r = x.r;
+      var tr = el("tr", x.mine ? "em" : null);
+      var td0 = el("td", "label");
+      td0.appendChild(svgKey(x.color));
+      td0.appendChild(document.createTextNode(" " + x.name + (x.mine ? "（你现在用的）" : "")));
+      tr.appendChild(td0);
+      tr.appendChild(el("td", null, money(r.invested)));
+      tr.appendChild(el("td", null, money(r.value)));
+      tr.appendChild(el("td", r.xirr === bestX ? "best" : null, pct(r.xirr, 2)));
+      tr.appendChild(el("td", null, pctRaw(r.maxDrawdown)));
+      var tdw = el("td", null, (r.worstRatio * 100).toFixed(0) + "%");
+      tdw.appendChild(el("span", "note", cnDate(r.worstRatioDate)));
+      tr.appendChild(tdw);
+      tr.appendChild(el("td", null, x.lever ? r.rebalancesPerYear.toFixed(1) + " 次" : r.mode === "dip" ? (r.rebalances / Math.max(1, (s.day[r.lastIdx] - s.day[r.firstIdx]) / 365.25)).toFixed(1) + " 次" : "—"));
+      tr.appendChild(el("td", null, x.lever ? r.avgLever.toFixed(2) + " 倍" : "—"));
+      tb.appendChild(tr);
+    });
+    // 结论
+    var dx = (mine.xirr - plain.xirr) * 100, dd = mine.maxDrawdown - plain.maxDrawdown;
+    var v = $("lvVerdictBt");
+    v.textContent = "";
+    v.appendChild(document.createTextNode("从 " + cnDate(mine.startDate) + " 到现在，你的设置（" + mine.modeName + "）和同样" + perWord() + "投 " +
+      money(cfg.baseAmount) + " 的普通定投比：年化 "));
+    v.appendChild(el("b", null, pct(mine.xirr, 2) + " 对 " + pct(plain.xirr, 2)));
+    v.appendChild(document.createTextNode("（" + (dx >= 0 ? "高 " : "低 ") + Math.abs(dx).toFixed(2) + " 个点），最大回撤 " +
+      pctRaw(mine.maxDrawdown) + " 对 " + pctRaw(plain.maxDrawdown) + "（" + (dd < 0 ? "更深 " : "更浅 ") + Math.abs(dd).toFixed(1) +
+      " 个点），最惨的时候剩投入的 " + (mine.worstRatio * 100).toFixed(0) + "% 对 " + (plain.worstRatio * 100).toFixed(0) + "%。"));
+    // 滚动 10 年
+    var first = +s.dates[0].slice(0, 4) + 1, lastY = +s.dates[s.n - 1].slice(0, 4);
+    var diffs = [], years = [];
+    for (var y = first; y + 10 <= lastY + 1; y++) {
+      var a = DCA.backtest(s, cfg, { mode: "plainQ", startDate: y + "-01-01", endDate: (y + 10) + "-01-01", dd: cache.dd, tl: cache.tl });
+      var b = DCA.leverBacktest(s, cfg, lv, { startDate: y + "-01-01", endDate: (y + 10) + "-01-01", sig: cache.lvSig, ci: cache.ci });
+      if (a && b) { diffs.push((b.xirr - a.xirr) * 100); years.push(y); }
+    }
+    if (diffs.length) {
+      var avg = diffs.reduce(function (p, q) { return p + q; }, 0) / diffs.length;
+      var win = diffs.filter(function (d) { return d > 0; }).length;
+      var worst = Math.min.apply(null, diffs);
+      v.appendChild(document.createTextNode(" 换个年代：每年 1 月开始投 10 年，一共 " + diffs.length + " 段，平均比普通定投" +
+        (avg >= 0 ? "高 " : "低 ") + Math.abs(avg).toFixed(2) + " 个点，" + win + " 段更高、" + (diffs.length - win) +
+        " 段更低；最差的一段（" + years[diffs.indexOf(worst)] + " 年开始）" + (worst >= 0 ? "也高 " : "低 ") + Math.abs(worst).toFixed(2) + " 个点。"));
+    }
+    $("lvTableNote").textContent = "每次都投同样的基础金额、不加码（「大跌才买」那行按它自己的规则加码，所以投入更多）。现金部分按当年联邦基金利率计息，" +
+      "换仓按 " + (DCA.FEE * 100).toFixed(2) + "% 估点差。2010 年以前的 TQQQ 是模拟数据。起始年份跟上面的回测表一起改。";
+    renderLeverCurve([rows[0], rows[1], { r: mine, name: "你的设置：" + mine.modeName, color: "var(--s-lever)" }]);
+    renderLeverChart(mine);
+  }
+
+  function yearTicks(svg, s, firstIdx, n, x, h) {
+    var lastYear = null;
+    for (var j = 0; j < n; j += Math.max(1, Math.floor(n / 400))) {
+      var yr = s.dates[firstIdx + j].slice(0, 4);
+      if (yr !== lastYear && +yr % (n > 2500 ? 4 : 2) === 0) {
+        lastYear = yr;
+        svg.appendChild(svgEl("text", { x: x(j), y: h - 8, "text-anchor": "middle", class: "tick" })).textContent = yr;
+      }
+    }
+  }
+
+  function renderLeverCurve(list) {
+    var s = state.series;
+    var host = $("lvCurveChart");
+    if (!host.clientWidth) return;
+    var box = chartBox(host, 240);
+    var w = box.w, h = box.h, L = 40, R = 52, T = 12, B = 26;
+    var iw = w - L - R, ih = h - T - B;
+    var n = list[0].r.ratio.length;
+    var lo = 0.2, hi = 1;
+    list.forEach(function (x) { x.r.ratio.forEach(function (v) { if (v > hi) hi = v; if (v < lo) lo = v; }); });
+    hi = Math.ceil(hi); lo = Math.max(0, Math.floor(lo * 10) / 10);
+    var X = function (i) { return L + iw * i / (n - 1); };
+    var Y = function (v) { return T + ih * (1 - (v - lo) / (hi - lo)); };
+    niceTicks(lo, hi, 4).forEach(function (v) {
+      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(v), y2: Y(v), class: "grid" }));
+      box.svg.appendChild(svgEl("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end", class: "tick" })).textContent = v + "x";
+    });
+    if (lo < 1 && hi > 1) box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(1), y2: Y(1), class: "ref", "stroke-dasharray": "4 3" }));
+    var ends = [];
+    list.forEach(function (x, k) {
+      var d = "", r = x.r.ratio;
+      var step = Math.max(1, Math.floor(r.length / 1200));
+      for (var i = 0; i < r.length; i += step) d += (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(r[i]).toFixed(1);
+      d += "L" + X(r.length - 1).toFixed(1) + " " + Y(r[r.length - 1]).toFixed(1);
+      box.svg.appendChild(svgEl("path", { d: d, fill: "none", stroke: x.color, "stroke-width": k === list.length - 1 ? 2.2 : 1.5 }));
+      ends.push({ y: Y(r[r.length - 1]), text: r[r.length - 1].toFixed(1) + "x", color: x.color });
+    });
+    ends.sort(function (a, b) { return a.y - b.y; });
+    for (var e = 1; e < ends.length; e++) if (ends[e].y - ends[e - 1].y < 13) ends[e].y = ends[e - 1].y + 13;
+    ends.forEach(function (p) {
+      box.svg.appendChild(svgEl("text", { x: w - R + 6, y: p.y + 4, class: "end-label" })).textContent = p.text;
+    });
+    yearTicks(box.svg, s, list[0].r.firstIdx, n, X, h);
+    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: T + ih, y2: T + ih, class: "axis" }));
+    var lg = $("lvCurveLegend");
+    lg.textContent = "";
+    list.forEach(function (x) {
+      var sp = el("span");
+      sp.appendChild(svgKey(x.color));
+      sp.appendChild(document.createTextNode(x.name));
+      lg.appendChild(sp);
+    });
+  }
+
+  function renderLeverChart(r) {
+    var s = state.series;
+    var host = $("lvLevChart");
+    if (!host.clientWidth) return;
+    var box = chartBox(host, 160);
+    var w = box.w, h = box.h, L = 40, R = 14, T = 10, B = 26;
+    var iw = w - L - R, ih = h - T - B;
+    var n = r.lev.length;
+    var hi = 2;
+    for (var i = 0; i < n; i++) if (r.lev[i] > hi) hi = r.lev[i];
+    hi = Math.ceil(hi * 2) / 2;
+    var X = function (i) { return L + iw * i / (n - 1); };
+    var Y = function (v) { return T + ih * (1 - v / hi); };
+    niceTicks(0, hi, 4).forEach(function (v) {
+      box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(v), y2: Y(v), class: "grid" }));
+      box.svg.appendChild(svgEl("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end", class: "tick" })).textContent = v + "x";
+    });
+    var step = Math.max(1, Math.floor(n / 1200));
+    var d = "M" + L + " " + Y(0);
+    for (var k = 0; k < n; k += step) d += "L" + X(k).toFixed(1) + " " + Y(r.lev[k]).toFixed(1);
+    d += "L" + X(n - 1).toFixed(1) + " " + Y(r.lev[n - 1]).toFixed(1) + "L" + X(n - 1).toFixed(1) + " " + Y(0) + "Z";
+    box.svg.appendChild(svgEl("path", { d: d, fill: "var(--s-lever)", "fill-opacity": 0.28, stroke: "var(--s-lever)", "stroke-width": 1.2 }));
+    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: Y(1), y2: Y(1), stroke: "var(--ink-2)", "stroke-width": 1, "stroke-dasharray": "4 3" }));
+    var t = svgEl("text", { x: L + 4, y: Y(1) - 5, class: "ref-label" });
+    t.textContent = "1 倍 = 纯 QQQ";
+    box.svg.appendChild(t);
+    yearTicks(box.svg, s, r.firstIdx, n, X, h);
+    box.svg.appendChild(svgEl("line", { x1: L, x2: w - R, y1: T + ih, y2: T + ih, class: "axis" }));
+    var below = 0, full = 0;
+    for (var j = 0; j < n; j++) { if (r.lev[j] < 0.999) below++; if (r.lev[j] >= state.lv.maxLev * 0.9) full++; }
+    $("lvLevNote").textContent = "平均杠杆 " + r.avgLever.toFixed(2) + " 倍；有 " + Math.round(below / n * 100) + "% 的日子低于 1 倍（拿着现金），" +
+      Math.round(full / n * 100) + "% 的日子接近上限。杠杆降下来的时候，大多是 2000—2002、2008、2020、2022 这种大跌里。";
+  }
+
+  function renderLeverFacts() {
+    var ul = $("lvFacts");
+    if (!ul || ul.childNodes.length) return;
+    function add(t, d) {
+      var li = el("li");
+      li.appendChild(el("b", null, t));
+      li.appendChild(el("span", null, d));
+      ul.appendChild(li);
+    }
+    add("为什么这样做会更好",
+      "杠杆 ETF 的损耗大约和「杠杆² × 波动²」成正比，大跌时波动会扎堆变大，损耗也最狠。波动率目标在波动变大时自动把杠杆降下来（必要时换成现金），刚好躲开大部分损耗；平静的上涨期再把杠杆加回去。均线开关是同一个意思的粗糙版：跌破均线的时候通常也是波动大的时候。");
+    add("思路来自 GitHub 上的开源回测，参数没有调",
+      "波动率目标参考 penny-vault/leveraged-trend-ensemble 等项目，均线开关参考 cozec/LRS（Gayed《Leverage for the Long Run》）。我们用本站的数据和成本假设重跑过：均线参数在 1999—2012 年最好的几组，到 2013—2026 年排到中下游——挑参数没用，所以这里只给常见的整数默认值。");
+    add("打乱历史顺序也站得住",
+      "另外用 QLD（2 倍）做过压力测试：把 1999—2025 年的日涨跌按 1 年一块打乱，拼出 800 条假想历史。波动率目标 25–30% 在 98–99% 的路径里跑赢只买 QQQ，最差 10% 的路径年化仍有约 6%；全仓 QLD 最差 10% 是 −8%。均线开关的中位数也高，但最差情况不如波动率目标。");
+    add("代价：每周都要看，一年调仓好几次",
+      "波动率目标每次定投都要对一下配比，按默认设置平均一年真正卖出调仓 5–8 次；均线开关约 2 次。在应税账户里每次卖出都可能产生税，回测没有算税。");
+    add("用 TQQQ 拼出来的杠杆会漂",
+      "2 倍 = 一半 TQQQ 一半 QQQ。两次调仓之间 TQQQ 涨得快、跌得也快，实际杠杆会偏离目标，所以才设了「偏离多少才调仓」。真实的 TQQQ 从 2010 年才有，之前是模拟数据。");
+    add("现金要放在能生息的地方",
+      "1 倍以下的那部分现金在回测里按联邦基金利率计息，相当于放在美元货币基金或超短期国债 ETF 里。如果只是放着不动，收益会比回测低一点。");
+    add("它不是稳赚",
+      "2013 年以后的大牛市里，一直满仓 2 倍会比它赚得更多；它赢在大跌里亏得少。过去 27 年只是一段历史，这不是投资建议。");
   }
 
   // ================= 风险须知 =================
@@ -1604,7 +2084,10 @@
   }
 
   // ================= 我的持仓 =================
-  var holding = { spyShares: "", qqqShares: "", tqqqShares: "" };
+  var holding = { spyShares: "", qqqShares: "", tqqqShares: "", cash: "" };
+  function saveHold() {
+    try { localStorage.setItem(HOLD_KEY, JSON.stringify(holding)); } catch (e) { /* 忽略 */ }
+  }
   function loadHold() {
     try {
       var h = JSON.parse(localStorage.getItem(HOLD_KEY) || "null");
@@ -1612,6 +2095,7 @@
         holding.spyShares = h.spyShares || "";
         holding.qqqShares = h.qqqShares || "";
         holding.tqqqShares = h.tqqqShares || "";
+        holding.cash = h.cash || "";
       }
     } catch (e) { /* 忽略 */ }
   }
@@ -1624,10 +2108,13 @@
       holding.spyShares = $("hS").value;
       holding.qqqShares = $("hQ").value;
       holding.tqqqShares = $("hT").value;
-      try { localStorage.setItem(HOLD_KEY, JSON.stringify(holding)); } catch (e) { /* 忽略 */ }
+      saveHold();
+      $("lvQ").value = holding.qqqShares;
+      $("lvT").value = holding.tqqqShares;
       renderHold();
       renderSteadyPlan();
       renderSignal();
+      renderLeverNow();
     }
     $("hS").addEventListener("input", read);
     $("hQ").addEventListener("input", read);
@@ -1745,6 +2232,7 @@
     renderZoneChart();
     renderBacktest();
     renderSteady();
+    renderLever();
     renderRolling();
     renderFacts();
     renderAnnual();
@@ -1765,7 +2253,7 @@
       sel.appendChild(o);
     }
     sel.value = String(first);
-    sel.addEventListener("change", renderBacktest);
+    sel.addEventListener("change", function () { renderBacktest(); renderLeverBacktest(); });
   }
 
   function showNotice(t) {
@@ -1802,6 +2290,7 @@
     bindSteady();
     bindAnnual();
     bindHold();
+    bindLever();
     bindJournal();
     bindPlan();
     $("app").hidden = false;
@@ -1812,7 +2301,7 @@
       if (w === lastW) return;
       lastW = w;
       clearTimeout(timer);
-      timer = setTimeout(function () { renderZoneChart(); renderBacktest(); }, 120);
+      timer = setTimeout(function () { renderZoneChart(); renderBacktest(); renderLeverBacktest(); }, 120);
     });
     ro.observe($("app"));
   }

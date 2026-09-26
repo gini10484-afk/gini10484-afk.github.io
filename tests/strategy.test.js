@@ -562,3 +562,124 @@ test("备份：能来回转，也能读第一个站的旧格式", () => {
   // 完全读不出来要报错
   assert.throws(() => DCA.parseTradesBackup("随便写点什么"));
 });
+
+// ---------- 杠杆轮动（波动率目标 / 均线开关） ----------
+const LBASE = { baseAmount: 100, investWeekday: 1, maWindow: 20 };
+
+test("杠杆 → 配比：≥1 倍用 QQQ+TQQQ，<1 倍用 QQQ+现金", () => {
+  const w2 = DCA.leverWeights(2);
+  [0, 0.5, 0.5].forEach((v, i) => close(w2[i], v));
+  const w1 = DCA.leverWeights(1);
+  [0, 1, 0].forEach((v, i) => close(w1[i], v));
+  const w15 = DCA.leverWeights(1.5);
+  [0, 0.75, 0.25].forEach((v, i) => close(w15[i], v));
+  const wh = DCA.leverWeights(0.5);
+  [0.5, 0.5, 0].forEach((v, i) => close(wh[i], v));
+  // 配比反推回杠杆
+  close(DCA.effectiveLever([0, 50, 50]), 2);
+  close(DCA.effectiveLever([50, 50, 0]), 0.5);
+  close(DCA.leverDrift([0, 100, 0], w2), 100);
+  close(DCA.leverDrift([0, 50, 50], w2), 0);
+});
+
+test("杠杆设置：不合法的值退回默认，上下限写反会自动对调", () => {
+  const d = DCA.leverDefaults({ kind: "乱写", volTarget: -5, band: 0, minLev: 2, maxLev: 1 });
+  assert.equal(d.kind, "vol");
+  assert.equal(d.volTarget, DCA.LEVER_DEFAULT.volTarget);
+  assert.equal(d.band, DCA.LEVER_DEFAULT.band);
+  assert.equal(d.minLev, 1);
+  assert.equal(d.maxLev, 2);
+  assert.equal(DCA.leverDefaults({ kind: "ma" }).kind, "ma");
+});
+
+test("最近波动：每天固定涨跌 1% 交替时，年化波动约 16%", () => {
+  const d = tradingDays("2020-01-06", 60);
+  const px = [100];
+  for (let i = 1; i < 60; i++) px.push(px[i - 1] * (i % 2 ? 1.01 : 1 / 1.01));
+  const s = series(d, px);
+  const rv = DCA.realizedVol(s, 20);
+  assert.equal(rv.ok[19], 0);
+  assert.equal(rv.ok[20], 1);
+  // 对数涨跌 ±ln(1.01)，样本标准差 ≈ ln(1.01)·√(20/19)
+  close(rv.vol[40], Math.log(1.01) * Math.sqrt(20 / 19) * Math.sqrt(252) * 100, 1e-6);
+});
+
+test("波动率目标：波动越小杠杆越高，并且夹在上下限之间", () => {
+  const d = tradingDays("2020-01-06", 80);
+  const px = [100];
+  // 前 40 天几乎不动（波动很小），后 40 天每天 ±4%（波动很大）
+  for (let i = 1; i < 80; i++) px.push(px[i - 1] * (i < 40 ? (i % 2 ? 1.001 : 1 / 1.001) : (i % 2 ? 1.04 : 1 / 1.04)));
+  const s = series(d, px);
+  const sig = DCA.leverSignals(s, LBASE, { kind: "vol", volTarget: 30, minLev: 0.5, maxLev: 2 });
+  close(sig.L[35], 2); // 波动小 → 顶到上限
+  close(sig.L[79], 0.5); // 波动大 → 降到下限
+  const mid = DCA.leverSignals(s, LBASE, { kind: "vol", volTarget: 30, minLev: 0, maxLev: 3 });
+  close(mid.L[79], 30 / mid.rv.vol[79]);
+});
+
+test("均线开关：有缓冲带，中间来回晃不会切换", () => {
+  const tl = { ok: [1, 1, 1, 1, 1, 1], dev: [1, 3, -1, -2.5, 1.5, 2.5] };
+  const on = DCA.maSwitch(tl, 2);
+  // 起点在均线上方 → 开；-1 还在缓冲带里 → 保持开；-2.5 才关；1.5 还在带里 → 保持关；2.5 才开
+  assert.deepEqual(Array.from(on), [1, 1, 1, 0, 0, 1]);
+  const noBuf = DCA.maSwitch(tl, 0);
+  assert.deepEqual(Array.from(noBuf), [1, 1, 0, 0, 1, 1]);
+});
+
+test("杠杆回测：价格不动时，投进去多少就是多少；1 倍就是纯 QQQ", () => {
+  const d = tradingDays("2020-01-06", 120);
+  const flat = series(d, d.map(() => 100));
+  const r = DCA.leverBacktest(flat, LBASE, { kind: "ma", maOnLev: 1, maOffLev: 1 }, { rates: { 2020: 0 } });
+  close(r.value, r.invested, 1e-6);
+  close(r.tqqqShare, 0);
+  // 1 倍的杠杆轮动 = 普通定投
+  const px = d.map((_, i) => ramp(i));
+  const s = series(d, px);
+  const one = DCA.leverBacktest(s, LBASE, { kind: "ma", maOnLev: 1, maOffLev: 1 });
+  const plain = DCA.backtest(s, LBASE, { mode: "plainQ" });
+  close(one.value, plain.value, 1e-6);
+  close(one.invested, plain.invested);
+});
+
+test("杠杆回测：2 倍时一半 TQQQ；偏离不到阈值不调仓", () => {
+  const d = tradingDays("2020-01-06", 200);
+  const px = d.map((_, i) => 100 * Math.pow(1.001, i)); // 慢慢涨，一直在均线上方
+  const s = series(d, px);
+  const r = DCA.leverBacktest(s, LBASE, { kind: "ma", maOnLev: 2, maOffLev: 1, band: 30 });
+  assert.ok(r.tqqqShare > 45 && r.tqqqShare < 60, "TQQQ 占比 " + r.tqqqShare);
+  assert.ok(r.avgLever > 1.4);
+  // 阈值设成 100%：永远不卖，只靠新钱补
+  const lazy = DCA.leverBacktest(s, LBASE, { kind: "ma", band: 100 });
+  assert.equal(lazy.rebalances, 0);
+});
+
+test("杠杆回测：现金按利率计息", () => {
+  const d = tradingDays("2020-01-06", 300);
+  const s = series(d, d.map(() => 100));
+  const ci = DCA.cashIndex(s, { 2020: 5, 2021: 5 });
+  assert.ok(ci[299] > 1.05 && ci[299] < 1.07, "一年多 5% 的利息：" + ci[299]);
+  // 杠杆 0.5：一半现金，价格不动，赚的只有利息
+  const r = DCA.leverBacktest(s, LBASE, { kind: "ma", maOnLev: 0.5, maOffLev: 0.5 }, { rates: { 2020: 5, 2021: 5 } });
+  assert.ok(r.value > r.invested);
+  close(r.cashShare, 50, 2);
+});
+
+test("现在该调到什么配比：按持仓给出买卖股数", () => {
+  const d = tradingDays("2020-01-06", 200);
+  const px = d.map((_, i) => 100 * Math.pow(1.001, i));
+  const s = series(d, px);
+  const st = DCA.leverStatus(s, LBASE, { kind: "ma", maOnLev: 2 }, { qqqShares: 10, tqqqShares: 0, cash: 0, amount: 0 });
+  close(st.targetLever, 2);
+  assert.ok(st.maOn);
+  assert.ok(st.switchGap < 0); // 在上方，要跌才会关
+  close(st.hold.leverNow, 1);
+  close(st.hold.drift, 100);
+  assert.equal(st.hold.needRebalance, true);
+  // 卖一半 QQQ，买同样金额的 TQQQ
+  close(st.hold.trades[1], -st.hold.total / 2, 1e-6);
+  close(st.hold.trades[2], st.hold.total / 2, 1e-6);
+  // 不传持仓也能用
+  const bare = DCA.leverStatus(s, LBASE, { kind: "vol" });
+  assert.equal(bare.hold, undefined);
+  assert.ok(bare.volForMax > 0);
+});

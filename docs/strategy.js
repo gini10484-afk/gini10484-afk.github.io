@@ -1050,6 +1050,287 @@
     };
   }
 
+  // ---------- 杠杆轮动：按风险调杠杆（波动率目标 / 均线开关） ----------
+  // 思路来自 GitHub 上的几个开源回测（cozec/LRS、penny-vault/leveraged-trend-ensemble 等）：
+  //   波动率目标：纳指最近波动小就多拿杠杆，波动大就少拿，杠杆 = 目标波动 ÷ 最近波动
+  //   均线开关：纳指在 200 日均线上方拿 2 倍，下方拿 1 倍；加一段缓冲带避免来回换
+  // 这里的“杠杆”用 QQQ + TQQQ（+ 现金）拼出来：
+  //   杠杆 L ≥ 1：TQQQ 占 (L−1)/2，其余 QQQ（2 倍 = 一半 TQQQ 一半 QQQ）
+  //   杠杆 L < 1：QQQ 占 L，其余放现金（按联邦基金利率计息，约等于货币基金）
+  var LEVER_DEFAULT = {
+    kind: "vol", // "vol" 波动率目标 | "ma" 均线开关
+    volTarget: 30, // 波动率目标：想要组合的年化波动是多少（%）
+    volWindow: 20, // 看最近多少个交易日的波动
+    minLev: 0.5, // 杠杆下限（< 1 就是拿一部分现金）
+    maxLev: 2, // 杠杆上限
+    band: 30, // 实际配比和目标差多少才动手（三项差额加总，占总资产的 %）
+    maBuffer: 2, // 均线开关：高过均线这么多才开、低过这么多才关（%）
+    maOnLev: 2, // 均线上方的杠杆
+    maOffLev: 1, // 均线下方的杠杆
+  };
+  var LEVER_NAMES = { vol: "波动率目标", ma: "均线开关" };
+
+  // 联邦基金利率年平均（%），现金部分按它计息。2026 年是估的
+  var CASH_RATES = {
+    1999: 4.97, 2000: 6.24, 2001: 3.89, 2002: 1.67, 2003: 1.13, 2004: 1.35, 2005: 3.22,
+    2006: 4.97, 2007: 5.02, 2008: 1.92, 2009: 0.16, 2010: 0.18, 2011: 0.10, 2012: 0.14,
+    2013: 0.11, 2014: 0.09, 2015: 0.13, 2016: 0.40, 2017: 1.00, 2018: 1.83, 2019: 2.16,
+    2020: 0.38, 2021: 0.08, 2022: 1.68, 2023: 5.02, 2024: 5.14, 2025: 4.21, 2026: 3.60,
+  };
+
+  function leverDefaults(l) {
+    var c = l || {}, d = LEVER_DEFAULT;
+    var lo = num(c.minLev, 0, 3, d.minLev), hi = num(c.maxLev, 0.5, 3, d.maxLev);
+    if (lo > hi) { var tmp = lo; lo = hi; hi = tmp; }
+    return {
+      kind: c.kind === "ma" ? "ma" : "vol",
+      volTarget: num(c.volTarget, 5, 80, d.volTarget),
+      volWindow: Math.round(num(c.volWindow, 5, 120, d.volWindow)),
+      minLev: lo, maxLev: hi,
+      band: num(c.band, 1, 100, d.band),
+      maBuffer: num(c.maBuffer, 0, 15, d.maBuffer),
+      maOnLev: num(c.maOnLev, 0, 3, d.maOnLev),
+      maOffLev: num(c.maOffLev, 0, 3, d.maOffLev),
+    };
+  }
+
+  // 现金的“净值”：1 美元现金存到第 i 天变成多少
+  function cashIndex(series, rates) {
+    var n = series.n, out = new Float64Array(n), t = rates || CASH_RATES;
+    if (!n) return out;
+    out[0] = 1;
+    for (var i = 1; i < n; i++) {
+      var r = rateForYear(+series.dates[i].slice(0, 4), t) / 100;
+      out[i] = out[i - 1] * (1 + r * (series.day[i] - series.day[i - 1]) / 365);
+    }
+    return out;
+  }
+
+  // 最近 win 个交易日的年化波动（%），用 QQQ 复权价的日对数涨跌
+  function realizedVol(series, win) {
+    var n = series.n, p = series.adj;
+    var vol = new Float64Array(n), ok = new Uint8Array(n);
+    var s1 = 0, s2 = 0, lr = new Float64Array(n);
+    for (var i = 1; i < n; i++) {
+      lr[i] = Math.log(p[i] / p[i - 1]);
+      s1 += lr[i]; s2 += lr[i] * lr[i];
+      if (i > win) { s1 -= lr[i - win]; s2 -= lr[i - win] * lr[i - win]; }
+      if (i >= win) {
+        var mean = s1 / win, v = (s2 - win * mean * mean) / (win - 1);
+        vol[i] = Math.sqrt(Math.max(0, v) * 252) * 100;
+        ok[i] = 1;
+      }
+    }
+    return { vol: vol, ok: ok };
+  }
+
+  // 均线开关带缓冲：高过均线 buffer% 才打开，低过 buffer% 才关上，中间维持原状
+  function maSwitch(tl, buffer) {
+    var n = tl.dev.length, on = new Uint8Array(n), cur = -1;
+    for (var i = 0; i < n; i++) {
+      if (tl.ok[i]) {
+        if (cur < 0) cur = tl.dev[i] >= 0 ? 1 : 0;
+        else if (tl.dev[i] > buffer) cur = 1;
+        else if (tl.dev[i] < -buffer) cur = 0;
+      }
+      on[i] = cur > 0 ? 1 : 0;
+    }
+    return on;
+  }
+
+  // 杠杆 → 三层目标配比 [现金, QQQ, TQQQ]
+  function leverWeights(L) {
+    var x = Math.max(0, Math.min(3, Number(L) || 0));
+    if (x >= 1) { var t = (x - 1) / 2; return [0, 1 - t, t]; }
+    return [1 - x, x, 0];
+  }
+
+  // 三层实际配比 → 实际杠杆
+  function effectiveLever(vals) {
+    var tot = vals[0] + vals[1] + vals[2];
+    return tot > 0 ? (vals[1] + 3 * vals[2]) / tot : 0;
+  }
+
+  // 实际配比离目标多远：三项差额加总，占总资产的 %
+  function leverDrift(vals, w) {
+    var tot = vals[0] + vals[1] + vals[2];
+    if (!(tot > 0)) return 0;
+    return (Math.abs(vals[0] / tot - w[0]) + Math.abs(vals[1] / tot - w[1]) + Math.abs(vals[2] / tot - w[2])) * 100;
+  }
+
+  // 每一天收盘后算出来的目标杠杆（下一次定投用前一天的）
+  function leverSignals(series, config, lever, pre) {
+    var cfg = withDefaults(config), lv = leverDefaults(lever);
+    var tl = (pre && pre.tl) || trendLines(series, cfg.maWindow);
+    var rv = (pre && pre.rv) || realizedVol(series, lv.volWindow);
+    var sw = (pre && pre.sw) || maSwitch(tl, lv.maBuffer);
+    var n = series.n, L = new Float64Array(n), ok = new Uint8Array(n);
+    for (var i = 0; i < n; i++) {
+      if (lv.kind === "ma") {
+        ok[i] = tl.ok[i];
+        L[i] = tl.ok[i] ? (sw[i] ? lv.maOnLev : lv.maOffLev) : 1;
+      } else {
+        ok[i] = rv.ok[i];
+        L[i] = rv.ok[i] && rv.vol[i] > 0 ? Math.max(lv.minLev, Math.min(lv.maxLev, lv.volTarget / rv.vol[i])) : 1;
+      }
+    }
+    return { L: L, ok: ok, tl: tl, rv: rv, sw: sw, lever: lv };
+  }
+
+  function leverBacktest(series, config, lever, opts) {
+    opts = opts || {};
+    var cfg = withDefaults(config), lv = leverDefaults(lever);
+    var n = series.n;
+    var sig = opts.sig || leverSignals(series, cfg, lv, opts);
+    var ci = opts.ci || cashIndex(series, opts.rates);
+    var startIdx = 0;
+    if (opts.startDate) while (startIdx < n && series.dates[startIdx] < opts.startDate) startIdx++;
+    var endIdx = n;
+    if (opts.endDate) { endIdx = 0; while (endIdx < n && series.dates[endIdx] < opts.endDate) endIdx++; }
+    if (startIdx < 1) startIdx = 1;
+    if (endIdx <= startIdx) return null;
+
+    var isInvestDay = new Uint8Array(n);
+    var days = investDays(series, cfg.investWeekday, cfg.frequency);
+    for (var a = 0; a < days.length; a++) if (days[a] >= startIdx && days[a] < endIdx) isInvestDay[days[a]] = 1;
+
+    var sh = [0, 0, 0]; // [现金, QQQ, TQQQ]
+    var invested = 0, times = 0, rebalances = 0, feePaid = 0, turnover = 0, levSum = 0, levDays = 0;
+    var flows = [], curve = [], tshare = [], ratio = [], lev = [], cshare = [];
+    var peak = 0, mdd = 0, mddDate = null, worstRatio = Infinity, worstDate = null, under = 0, maxUnder = 0;
+
+    for (var i = startIdx; i < endIdx; i++) {
+      var px = [ci[i], series.adj[i], series.t[i]];
+      if (isInvestDay[i]) {
+        var amt = cfg.baseAmount; // 每次一样多，不加码
+        invested += amt; times++;
+        flows.push([series.day[i], amt]);
+        var w = leverWeights(sig.L[i - 1]); // 用前一个交易日收盘的信号
+        var vals = [sh[0] * px[0], sh[1] * px[1], sh[2] * px[2]];
+        var buy = steadyAlloc(vals, w, amt); // 新钱先补最缺的那层
+        for (var k = 0; k < 3; k++) if (buy[k] > 0) sh[k] += buy[k] / px[k];
+        var v2 = [sh[0] * px[0], sh[1] * px[1], sh[2] * px[2]];
+        if (leverDrift(v2, w) > lv.band) {
+          var rb = steadyRebalance(sh, px, w);
+          if (rb.turnover > 0) { rebalances++; feePaid += rb.fee; turnover += rb.turnover; }
+        }
+      }
+      var vv = [sh[0] * px[0], sh[1] * px[1], sh[2] * px[2]];
+      var v = vv[0] + vv[1] + vv[2];
+      var el = effectiveLever(vv);
+      curve.push(v);
+      tshare.push(v > 0 ? vv[2] / v * 100 : 0);
+      cshare.push(v > 0 ? vv[0] / v * 100 : 0);
+      lev.push(el);
+      if (v > 0) { levSum += el; levDays++; }
+      ratio.push(invested > 0 ? v / invested : 1);
+      if (v > peak) peak = v;
+      if (peak > 0) { var d0 = v / peak - 1; if (d0 < mdd) { mdd = d0; mddDate = series.dates[i]; } }
+      if (invested > 0) {
+        var rr = v / invested;
+        if (rr < worstRatio) { worstRatio = rr; worstDate = series.dates[i]; }
+        if (v < invested) { under++; if (under > maxUnder) maxUnder = under; } else under = 0;
+      }
+    }
+
+    var last = endIdx - 1;
+    var fv = [sh[0] * ci[last], sh[1] * series.adj[last], sh[2] * series.t[last]];
+    var value = fv[0] + fv[1] + fv[2];
+    var yrs = (series.day[last] - series.day[startIdx]) / 365.25;
+    return {
+      mode: "lever-" + lv.kind,
+      modeName: LEVER_NAMES[lv.kind] + (lv.kind === "vol" ? " " + lv.volTarget + "%" : ""),
+      lever: lv,
+      startDate: series.dates[startIdx], endDate: series.dates[last],
+      times: times, rebalances: rebalances, rebalancesPerYear: yrs > 0 ? rebalances / yrs : 0,
+      feePaid: feePaid, turnover: turnover,
+      invested: invested, value: value,
+      valueCash: fv[0], valueQ: fv[1], valueT: fv[2],
+      tqqqShare: value > 0 ? fv[2] / value * 100 : 0,
+      cashShare: value > 0 ? fv[0] / value * 100 : 0,
+      avgLever: levDays ? levSum / levDays : 0,
+      profit: value - invested,
+      totalReturn: invested > 0 ? value / invested - 1 : 0,
+      xirr: xirr(flows, value, series.day[last]),
+      maxDrawdown: mdd * 100, maxDrawdownDate: mddDate,
+      worstRatio: worstRatio === Infinity ? 1 : worstRatio, worstRatioDate: worstDate,
+      underwaterYears: maxUnder / 252,
+      curve: curve, tshare: tshare, cshare: cshare, ratio: ratio, lev: lev,
+      firstIdx: startIdx, lastIdx: last,
+    };
+  }
+
+  // 现在该调到什么配比；holding = { qqqShares, tqqqShares, cash } 可以不传
+  function leverStatus(series, config, lever, holding, pre) {
+    var cfg = withDefaults(config), lv = leverDefaults(lever);
+    var n = series.n;
+    if (!n) return null;
+    var sig = (pre && pre.sig) || leverSignals(series, cfg, lv, pre);
+    var i = n - 1;
+    var L = sig.L[i], w = leverWeights(L);
+    var tl = sig.tl, rv = sig.rv;
+    var next = nextInvestDate(series.dates[i], cfg.investWeekday, cfg.frequency);
+    var out = {
+      kind: lv.kind, kindName: LEVER_NAMES[lv.kind], lever: lv,
+      basedOn: series.dates[i], nextDate: next,
+      weekdayName: WEEKDAY_CN[(weekdayOf(dayNumber(next)) + 7) % 7],
+      price: series.adj[i], close: series.close[i], tqqqPrice: series.t[i],
+      targetLever: L, weights: [w[0] * 100, w[1] * 100, w[2] * 100],
+      vol: rv.ok[i] ? rv.vol[i] : null,
+      ma: tl.ok[i] ? tl.ma[i] : null, dev: tl.ok[i] ? tl.dev[i] : null,
+      maOn: !!sig.sw[i],
+    };
+    if (lv.kind === "vol") {
+      // 波动到多少时杠杆会顶到上限 / 降到 1 倍 / 降到下限
+      out.volForMax = lv.volTarget / lv.maxLev;
+      out.volForOne = lv.volTarget;
+      out.volForMin = lv.minLev > 0 ? lv.volTarget / lv.minLev : null;
+    } else if (tl.ok[i]) {
+      // 均线开关还差多少会切换
+      out.switchAt = out.maOn ? tl.ma[i] * (1 - lv.maBuffer / 100) : tl.ma[i] * (1 + lv.maBuffer / 100);
+      out.switchGap = (out.switchAt / series.adj[i] - 1) * 100; // 正数 = 要涨这么多，负数 = 要跌这么多
+    }
+    // 均线开关上一次切换是哪天
+    var lastChange = null;
+    if (lv.kind === "ma") {
+      for (var j = i; j > 0; j--) {
+        if (sig.sw[j] !== sig.sw[j - 1]) { lastChange = series.dates[j]; break; }
+      }
+    }
+    out.lastChange = lastChange;
+
+    if (holding) {
+      var sh = [
+        Math.max(0, Number(holding.cash) || 0),
+        Math.max(0, Number(holding.qqqShares) || 0),
+        Math.max(0, Number(holding.tqqqShares) || 0),
+      ];
+      var px = [1, series.close[i], series.t[i]];
+      var vals = [sh[0], sh[1] * px[1], sh[2] * px[2]];
+      var tot = vals[0] + vals[1] + vals[2];
+      var drift = leverDrift(vals, w);
+      var amt = Number(holding.amount) >= 0 && holding.amount !== "" && holding.amount != null ? Number(holding.amount) : cfg.baseAmount;
+      var buy = steadyAlloc(vals, w, amt);
+      var after = [vals[0] + buy[0], vals[1] + buy[1], vals[2] + buy[2]];
+      var driftAfter = leverDrift(after, w);
+      var atot = after[0] + after[1] + after[2];
+      var trades = [0, 1, 2].map(function (k) { return atot * w[k] - after[k]; }); // >0 买，<0 卖
+      out.hold = {
+        values: vals, total: tot,
+        weightsNow: tot > 0 ? [vals[0] / tot * 100, vals[1] / tot * 100, vals[2] / tot * 100] : [0, 0, 0],
+        leverNow: effectiveLever(vals),
+        drift: drift,
+        amount: amt, buy: buy,
+        buyShares: [buy[0], px[1] > 0 ? buy[1] / px[1] : 0, px[2] > 0 ? buy[2] / px[2] : 0],
+        driftAfter: driftAfter,
+        needRebalance: atot > 0 && driftAfter > lv.band,
+        trades: trades,
+        tradeShares: [trades[0], px[1] > 0 ? trades[1] / px[1] : 0, px[2] > 0 ? trades[2] / px[2] : 0],
+      };
+    }
+    return out;
+  }
+
   // ---------- 买入记录 ----------
   var ASSETS = ["QQQ", "TQQQ", "SPY"];
   function assetOf(v) {
@@ -1238,6 +1519,19 @@
     rateForYear: rateForYear,
     ANNUAL_NAMES: ANNUAL_NAMES,
     annualBacktest: annualBacktest,
+    LEVER_DEFAULT: LEVER_DEFAULT,
+    LEVER_NAMES: LEVER_NAMES,
+    CASH_RATES: CASH_RATES,
+    leverDefaults: leverDefaults,
+    cashIndex: cashIndex,
+    realizedVol: realizedVol,
+    maSwitch: maSwitch,
+    leverWeights: leverWeights,
+    effectiveLever: effectiveLever,
+    leverDrift: leverDrift,
+    leverSignals: leverSignals,
+    leverBacktest: leverBacktest,
+    leverStatus: leverStatus,
     ASSETS: ASSETS,
     assetOf: assetOf,
     suggestionForDate: suggestionForDate,

@@ -111,6 +111,22 @@ function buildReminder(data, opts) {
       `这次就投 ${fmtMoney(base)}，不加码，分成 ${parts.join(" · ")}。` +
       `实际下单前在网站上按你自己的持仓算一下，缺得多的那层会多分一点。`);
   }
+  // 另一种做法：按风险调杠杆（仓库默认设置，用的人按网站上自己的设置为准）
+  const lvVol = DCA.leverStatus(series, cfg, { kind: "vol" }, null, { tl: tl });
+  const lvMa = DCA.leverStatus(series, cfg, { kind: "ma" }, null, { tl: tl });
+  const mix = (st) => `QQQ ${Math.round(st.weights[1])}% · TQQQ ${Math.round(st.weights[2])}%` +
+    (st.weights[0] > 0.5 ? ` · 现金 ${Math.round(st.weights[0])}%` : "");
+  if (lvVol && lvMa) {
+    const lvDef = DCA.leverDefaults({});
+    lines.push("");
+    lines.push("### 如果你用的是「按风险调杠杆」");
+    lines.push(`- **波动率目标 ${lvDef.volTarget}%**：QQQ 最近 ${lvDef.volWindow} 个交易日年化波动 ${fmtPct(lvVol.vol)}，` +
+      `目标杠杆 **${lvVol.targetLever.toFixed(2)} 倍** → ${mix(lvVol)}`);
+    lines.push(`- **均线开关 ±${lvDef.maBuffer}%**：开关${lvMa.maOn ? "打开" : "关着"}，目标杠杆 **${lvMa.targetLever.toFixed(2)} 倍** → ${mix(lvMa)}` +
+      (lvMa.switchAt ? `（QQQ ${lvMa.maOn ? "跌到" : "涨到"} ${fmtMoney(lvMa.switchAt)} 才会切换）` : ""));
+    lines.push(`- 这次的 ${fmtMoney(cfg.baseAmount)} 不加码，按上面的配比投；实际配比和目标差超过 ${lvDef.band}% 才卖出调仓。` +
+      "填了持仓的话，网站上会直接算出买卖几股。");
+  }
   lines.push("");
   lines.push(`美股开盘：北京时间 21:30（夏令时）/ 22:30（冬令时）。`);
   if (opts.owner && opts.repo) {
