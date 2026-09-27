@@ -44,11 +44,16 @@ jobs:
         run: |
           node --test tests/strategy.test.js
           node --test tests/reminder.test.js
+          python -m unittest discover -s tests -p "test_*.py"
 
       - name: 更新行情数据
         id: data
         continue-on-error: true # 数据源暂时失败时，照样用旧数据发布网站（网页会提示数据没更新）
         run: python scripts/update_data.py
+
+      - name: 更新板块热度（美股 11 个行业 + 科技细分）
+        continue-on-error: true # 拉不到就这次先不更新板块页，不影响网站其他部分
+        run: python scripts/update_sectors.py
 
       - name: 把新数据提交回仓库
         if: steps.data.outcome == 'success'
