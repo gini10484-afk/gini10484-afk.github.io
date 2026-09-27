@@ -34,7 +34,7 @@ function buildReminder(data, opts) {
 
   const today = opts.today || todayInNewYork();
   const wd = DCA.weekdayOf(DCA.dayNumber(today));
-  if (wd < 1 || wd > 5) return { skip: true, reason: "周末不投" };
+  if (!opts.force && (wd < 1 || wd > 5)) return { skip: true, reason: "周末不投" };
   if (!opts.force && cfg.frequency !== "daily" && wd !== cfg.investWeekday) {
     return { skip: true, reason: "今天不是定投日" };
   }
@@ -52,6 +52,7 @@ function buildReminder(data, opts) {
 
   const dateCn = today.slice(5, 7).replace(/^0/, "") + "月" + today.slice(8, 10).replace(/^0/, "") + "日";
   let title = `${dateCn}（${DCA.WEEKDAY_CN[wd]}）：投 ${fmtMoney(amount)} 买 ${asset}（×${r.multiplier}）`;
+  if (opts.force) title = "【测试】" + title; // 手动点 Run workflow 发的，不管是不是定投日
 
   const sellNow = DCA.sellTargetFor(cfg, dd, tl, i) !== null && cfg.sellMode !== "none";
   if (sellNow) title += " ⚠️ 该减 TQQQ";
