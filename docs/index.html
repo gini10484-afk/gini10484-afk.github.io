@@ -187,6 +187,29 @@
     .heat .hb { width: 36px; }
   }
 
+  /* 选股 */
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  .seg button { font: inherit; font-size: 14px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--field); background: var(--card); color: var(--ink-2); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); font-weight: 700; }
+  .seg button .n { font-variant-numeric: tabular-nums; opacity: .7; margin-left: 4px; font-weight: 500; }
+  .stk-table td.rk { color: var(--muted); width: 28px; }
+  .stk-table th:nth-child(2), .stk-table td.nm { text-align: left; }
+  .stk-table td.nm .sub { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stk-ctl { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stk-table td.nm b { font-weight: 700; }
+  .stk-table td.sc { font-weight: 700; }
+  .stk-table tr.cut td { border-top: 2px solid var(--ink); }
+  .chip.up { background: var(--hi); color: var(--q); }
+  .chip.down { background: var(--warn-bg); color: var(--t-ink); }
+  .chip.side { background: var(--soft); color: var(--ink-2); }
+  .chip .b { font-weight: 500; opacity: .75; }
+  @media (max-width: 760px) {
+    .stk-table .mh { display: none; }
+    .stk-table td.nm .sub { max-width: 120px; }
+    .stk-ctl select { height: 38px; font-size: 14px; padding: 0 8px; }
+    .tabs { gap: 16px; }
+  }
+
   /* 记录 */
   .form5 { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px 20px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: end; margin-top: 16px; }
   .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
@@ -254,6 +277,7 @@
     <button role="tab" id="tab-home" aria-controls="p-home" aria-selected="true">本周怎么投</button>
     <button role="tab" id="tab-backtest" aria-controls="p-backtest" aria-selected="false">回测</button>
     <button role="tab" id="tab-sectors" aria-controls="p-sectors" aria-selected="false">板块</button>
+    <button role="tab" id="tab-stocks" aria-controls="p-stocks" aria-selected="false">选股</button>
     <button role="tab" id="tab-records" aria-controls="p-records" aria-selected="false">我的记录</button>
     <button role="tab" id="tab-settings" aria-controls="p-settings" aria-selected="false">设置与说明</button>
   </nav>
@@ -375,6 +399,45 @@
           大于 1 就是这周比平常更多人在买卖它。<b>判断</b>看热度和近 1 周涨跌：放量上涨当作资金流入，放量下跌当作资金流出（在被抛售），成交变少就是关注度下降。
           细分板块按几只代表股票等权平均。每个美股交易日收盘后自动更新，只是观察用，不是买卖建议。</p>
       </div>
+    </section>
+  </main>
+
+  <!-- ============ 选股 ============ -->
+  <main id="p-stocks" role="tabpanel" aria-labelledby="tab-stocks" hidden>
+    <section>
+      <p class="eyebrow" id="kDate">个股筛选</p>
+      <h1 class="h-page" style="margin-top:8px">最强的 30 只</h1>
+      <p class="lede" id="kLede">正在读取个股数据…</p>
+    </section>
+    <section id="kBody" hidden>
+      <div class="sec-bar">
+        <div class="seg" id="kTrend" role="group" aria-label="按趋势筛选">
+          <button type="button" data-t="all" aria-pressed="true">全部<span class="n"></span></button>
+          <button type="button" data-t="up" aria-pressed="false">上涨趋势<span class="n"></span></button>
+          <button type="button" data-t="flat" aria-pressed="false">震荡<span class="n"></span></button>
+          <button type="button" data-t="down" aria-pressed="false">下跌趋势<span class="n"></span></button>
+        </div>
+        <div class="stk-ctl">
+          <label class="inl">范围 <select id="kScope"><option value="top">前 30 只</option><option value="all">整个股票池</option></select></label>
+          <label class="inl">排序 <select id="kSort"><option value="score">按评分</option><option value="w">按近 1 周</option><option value="m">按近 1 月</option><option value="q">按近 3 月</option><option value="heat">按热度</option><option value="off52">离 52 周高点最近</option></select></label>
+        </div>
+      </div>
+      <p class="small" id="kCount" style="margin-top:10px"></p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="sec-table stk-table" id="kTable">
+          <thead><tr><th scope="col">#</th><th scope="col">股票</th><th scope="col">趋势</th><th scope="col" class="mh">近 1 周</th><th scope="col" class="mh">近 1 月</th><th scope="col">近 3 月</th><th scope="col" class="mh">离 52 周高点</th><th scope="col" class="mh">热度</th><th scope="col">评分</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="notes2" style="margin-top:28px">
+        <div class="note"><span class="k">趋势怎么判断</span>
+          <p><b>上涨趋势</b>：股价在 50 日均线上方，50 日均线在 200 日均线上方，而且 50 日均线还在往上走。
+            <b>下跌趋势</b>：正好反过来。其他都算<b>震荡</b>，股价在 50 日均线上方写「偏强」，下方写「偏弱」。</p></div>
+        <div class="note"><span class="k">评分怎么算</span>
+          <p>在整个股票池（纳指100 成分股 + 板块页的科技细分代表股）里排名次，再加权：近 3 个月涨幅 35%、近 1 个月 25%、高出 200 日均线多少 20%、成交热度 20%。
+            100 分 = 各项都排最前。每个美股交易日收盘后自动更新。</p></div>
+      </div>
+      <p class="small" style="margin-top:16px">强的股票通常已经涨了很多，评分高不代表现在适合买，趋势也会随时变。这张表只是观察用，不是买卖建议。</p>
     </section>
   </main>
 
@@ -516,7 +579,7 @@
   function load(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
 
   // ============ 标签页 ============
-  var TABS = ["home", "backtest", "sectors", "records", "settings"];
+  var TABS = ["home", "backtest", "sectors", "stocks", "records", "settings"];
   function showTab(name, push) {
     if (TABS.indexOf(name) < 0) name = "home";
     TABS.forEach(function (t) {
@@ -528,6 +591,7 @@
     if (push && location.hash !== "#" + name) history.replaceState(null, "", name === "home" ? location.pathname : "#" + name);
     if (name === "backtest") player.draw();
     if (name === "sectors") loadSectors();
+    if (name === "stocks") loadStocks();
   }
   TABS.forEach(function (t, i) {
     $("tab-" + t).addEventListener("click", function () { showTab(t, true); });
@@ -915,6 +979,69 @@
     });
   }
   $("sSort").addEventListener("change", function () { if (sec.data) drawThemes(); });
+
+  // ============ 选股 ============
+  var stk = { data: null, loading: false, trend: "all" };
+  var TREND = { up: { k: "up", t: "上涨趋势" }, down: { k: "down", t: "下跌趋势" }, flat: { k: "side", t: "震荡" } };
+  function loadStocks() {
+    if (stk.data || stk.loading) return;
+    stk.loading = true;
+    fetch("stocks.json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (d) { stk.data = d; renderStocks(); })
+      .catch(function () { $("kLede").textContent = "个股数据还没生成，下一次自动更新（美股收盘后）之后就有了。"; })
+      .then(function () { stk.loading = false; });
+  }
+  function stkTop() { var d = stk.data; return d.stocks.slice(0, d.top || 30); }
+  function renderStocks() {
+    var d = stk.data;
+    if (!d || !d.stocks) return;
+    $("kBody").hidden = false;
+    $("kDate").textContent = "个股筛选 · 数据到 " + cnDate(d.asOf) + " 收盘";
+    var top = stkTop(), c = { up: 0, flat: 0, down: 0 };
+    top.forEach(function (x) { c[x.trend]++; });
+    var ups = top.filter(function (x) { return x.trend === "up"; }).slice(0, 5).map(function (x) { return x.s; });
+    var all = d.trendCounts || {};
+    $("kLede").textContent = "从纳指100 和科技细分共 " + d.count + " 只股票里，按近 1–3 个月涨幅、站上 200 日均线的幅度和成交热度打分，取前 " + top.length + " 只。" +
+      "这 " + top.length + " 只里 " + c.up + " 只上涨趋势、" + c.flat + " 只震荡、" + c.down + " 只下跌趋势" +
+      (ups.length ? "，上涨趋势里评分最高的是 " + ups.join("、") : "") + "。" +
+      "整个股票池是 " + (all.up || 0) + " 只上涨 / " + (all.flat || 0) + " 只震荡 / " + (all.down || 0) + " 只下跌。";
+    drawStocks();
+  }
+  function drawStocks() {
+    var d = stk.data, scope = $("kScope").value, key = $("kSort").value;
+    var base = scope === "top" ? stkTop() : d.stocks.slice();
+    var cnt = { all: base.length, up: 0, flat: 0, down: 0 };
+    base.forEach(function (x) { cnt[x.trend]++; });
+    Array.prototype.forEach.call($("kTrend").querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-pressed", b.dataset.t === stk.trend ? "true" : "false");
+      b.querySelector(".n").textContent = cnt[b.dataset.t];
+    });
+    var list = base.filter(function (x) { return stk.trend === "all" || x.trend === stk.trend; });
+    if (key !== "score") list.sort(function (a, b) { return (b[key] == null ? -1e9 : b[key]) - (a[key] == null ? -1e9 : a[key]); });
+    $("kCount").textContent = list.length ? "共 " + list.length + " 只" + (scope === "all" && key === "score" && stk.trend === "all" ? "，粗线以上是前 " + (d.top || 30) + " 只" : "") + "。" : "这个范围里没有这种趋势的股票。";
+    var tb = $("kTable").tBodies[0]; tb.textContent = "";
+    list.forEach(function (x, i) {
+      var tr = el("tr");
+      if (scope === "all" && key === "score" && stk.trend === "all" && i === (d.top || 30)) tr.className = "cut";
+      tr.appendChild(el("td", "rk num", String(x.rank)));
+      var td = el("td", "nm"); td.appendChild(el("b", null, x.s));
+      td.appendChild(el("span", "sub", (x.name || "") + (x.group && x.group !== "纳指100" ? " · " + x.group : ""))); tr.appendChild(td);
+      var tg = TREND[x.trend] || TREND.flat, tc = el("td"), chip = el("span", "chip " + tg.k, tg.t);
+      if (x.trend === "flat" && x.bias) chip.appendChild(el("span", "b", x.bias === "strong" ? " 偏强" : " 偏弱"));
+      tc.appendChild(chip); tr.appendChild(tc);
+      tr.appendChild(pctCell(x.w, "mh")); tr.appendChild(pctCell(x.m, "mh")); tr.appendChild(pctCell(x.q));
+      var off = pctCell(x.off52, "mh"); off.className = "num mh"; if (x.off52 != null && x.off52 > -0.05) off.textContent = "新高"; tr.appendChild(off);
+      var ht = heatCell(x.heat); ht.className = "mh"; tr.appendChild(ht);
+      tr.appendChild(el("td", "num sc", String(x.score)));
+      tb.appendChild(tr);
+    });
+  }
+  Array.prototype.forEach.call($("kTrend").querySelectorAll("button"), function (b) {
+    b.addEventListener("click", function () { stk.trend = b.dataset.t; if (stk.data) drawStocks(); });
+  });
+  $("kScope").addEventListener("change", function () { if (stk.data) drawStocks(); });
+  $("kSort").addEventListener("change", function () { if (stk.data) drawStocks(); });
 
   // ============ 我的记录 ============
   var trades = [];

@@ -13,6 +13,9 @@
 - **板块**：美股资金这周往哪儿走——11 个行业 + 科技细分（AI 芯片、存储、光模块 / 光通信、网络 / 高速互联、半导体设备、晶圆代工、AI 服务器、数据中心电力、软件、网络安全、互联网巨头、消费电子），
   每个细分看近 1 周 / 1 月 / 3 月涨跌和「成交热度」，点开看每只代表股票；放量上涨算资金流入、放量下跌算资金流出。
   真实资金流是付费数据，这里是用 Yahoo 公开行情估算的（`scripts/update_sectors.py`，每天跟着行情一起更新，细分和股票名单在文件最上面改）
+- **选股**：从纳指100 成分股 + 上面那些科技细分的代表股（共约 118 只）里挑出最强的 30 只，每只标出是**上涨趋势 / 震荡 / 下跌趋势**，
+  可以按趋势筛、按涨幅 / 热度排序、切到整个股票池。评分 = 近 3 月涨幅 35% + 近 1 月 25% + 高出 200 日均线 20% + 成交热度 20%（都是在池子里排名次）；
+  趋势看 50 日 / 200 日均线（`scripts/update_stocks.py`，每天跟着行情更新，纳指100 名单每年 12 月调整后改文件里的 NDX）
 - **我的记录**：持仓股数 + 买入记录（真实成本、收益、有没有按规则执行，能邮件备份、粘贴恢复）
 - **设置与说明**：4 个常用设置，其余收在「更多设置」；用之前要知道的 4 件事
 - **定投日提醒**：定投日北京时间 20:00，GitHub 发邮件告诉你这次该投多少、买哪个、要不要卖
@@ -231,7 +234,7 @@ TQQQ 当日涨跌 = 3 × QQQ 当日涨跌 + 漂移 / 252
 ```bash
 node --test tests/strategy.test.js   # 规则、回测、上限、持仓、卖出信号、买入记录，以及库里保留的稳妥模式 / 年度定投 / 按风险调杠杆函数（47 项）
 node --test tests/reminder.test.js   # 定投日提醒（16 项）
-python3 -m unittest discover -s tests -p "test_*.py"   # 板块热度的计算（3 项）
+python3 -m unittest discover -s tests -p "test_*.py"   # 板块热度（3 项）+ 个股筛选的趋势和评分（3 项）
 python3 scripts/update_data.py       # 手动更新一次数据
 ```
 
@@ -244,7 +247,7 @@ python3 scripts/update_data.py       # 手动更新一次数据
 ```
 qqq-tqqq-dca/
 ├── docs/                      ← 网站本身（发布到 GitHub Pages 的就是这个文件夹）
-│   ├── index.html             页面：四个标签页（本周怎么投 / 回测和回放 / 我的记录 / 设置与说明）
+│   ├── index.html             页面：六个标签页（本周怎么投 / 回测和回放 / 板块 / 选股 / 我的记录 / 设置与说明）
 │   ├── strategy.js            规则和回测计算（两套设置都在最上面）
 │   ├── sw.js / manifest.webmanifest / icons/   装到手机桌面、离线可看
 │   ├── fonts/                 自带的数字字体
@@ -252,7 +255,8 @@ qqq-tqqq-dca/
 ├── scripts/
 │   ├── update_data.py         拉行情、检查、模拟 2010 年前的 TQQQ、写 data.json
 │   ├── weekly_reminder.js     算这次投多少、买哪个，生成提醒内容
-│   └── update_sectors.py      板块热度：11 个行业 + 科技细分，写 docs/sectors.json
+│   ├── update_sectors.py      板块热度：11 个行业 + 科技细分，写 docs/sectors.json
+│   └── update_stocks.py       个股筛选：最强 30 只 + 趋势，写 docs/stocks.json
 ├── tests/                     node --test 用的测试
 ├── workflow/                  工作流的可见副本（要复制到 .github/workflows/ 里）
 ├── requirements.txt

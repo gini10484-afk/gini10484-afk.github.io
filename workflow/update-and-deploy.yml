@@ -55,6 +55,10 @@ jobs:
         continue-on-error: true # 拉不到就这次先不更新板块页，不影响网站其他部分
         run: python scripts/update_sectors.py
 
+      - name: 更新个股筛选（最强 30 只 + 趋势）
+        continue-on-error: true # 拉不到就这次先不更新选股页
+        run: python scripts/update_stocks.py
+
       - name: 把新数据提交回仓库
         if: steps.data.outcome == 'success'
         continue-on-error: true # 推送失败不影响下面发布网站
