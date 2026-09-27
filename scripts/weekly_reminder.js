@@ -110,6 +110,11 @@ function buildReminder(data, opts) {
     lines.push("");
     lines.push(`网站：${siteUrl(opts.owner, opts.repo)}`);
   }
+  if (opts.owner) {
+    // @ 一下仓库主人：提醒是机器人发的，@ 了才一定会收到邮件通知
+    lines.push("");
+    lines.push(`@${opts.owner}`);
+  }
   lines.push("");
   lines.push(`<sub>提醒按仓库里的默认基础金额 ${fmtMoney(cfg.baseAmount)} 算。你自己的金额只存在浏览器里，按上面的倍数乘一下就行。这不是投资建议。</sub>`);
 
