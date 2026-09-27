@@ -35,6 +35,27 @@ jobs:
         with:
           node-version: "22"
 
+      - name: 取最新行情（用网站上已经发布的那份）
+        run: |
+          # data.json 不在仓库里，是每天发布网站时现生成的，所以直接从网站下载
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          if [ "${REPO,,}" = "${OWNER,,}.github.io" ]; then
+            URL="https://${REPO}/data.json"
+          else
+            URL="https://${OWNER}.github.io/${REPO}/data.json"
+          fi
+          for i in 1 2 3; do
+            curl -fsSL --retry 2 "$URL" -o docs/data.json && break
+            echo "::warning::第 $i 次下载 $URL 失败"
+            sleep 10
+          done
+          if [ ! -s docs/data.json ]; then
+            echo "::warning::网站上的数据下载不到，改成直接拉一次行情"
+            pip install -q -r requirements.txt || true
+            python3 scripts/update_data.py
+          fi
+
       - name: 算这次该投多少、买哪个
         id: calc
         run: node scripts/weekly_reminder.js ${{ inputs.force && '--force' || '' }}
