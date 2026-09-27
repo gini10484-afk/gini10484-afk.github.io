@@ -148,3 +148,11 @@ test("提醒里会 @ 仓库主人，保证收到邮件通知", () => {
   const bare = buildReminder(data, { today, force: true });
   assert.ok(!/@/.test(bare.body));
 });
+
+test("手动测试提醒：周末也会发，标题标上【测试】", () => {
+  const data = flat(true);
+  const out = buildReminder(data, { today: "2026-09-27", force: true });
+  assert.equal(out.skip, false);
+  assert.match(out.title, /^【测试】/);
+  assert.equal(buildReminder(data, { today: "2026-09-27" }).skip, true);
+});
