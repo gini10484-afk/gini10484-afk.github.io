@@ -139,3 +139,12 @@ test("网址：用户主页仓库在根目录，其他仓库在子路径", () =>
   const out = buildReminder(data, { today: data.rows[data.rows.length - 1][0], force: true, owner: "gini10484-afk", repo: "gini10484-afk.github.io" });
   assert.match(out.body, /网站：https:\/\/gini10484-afk\.github\.io\/\n/);
 });
+
+test("提醒里会 @ 仓库主人，保证收到邮件通知", () => {
+  const data = flat(true);
+  const today = data.rows[data.rows.length - 1][0];
+  const out = buildReminder(data, { today, force: true, owner: "gini10484-afk", repo: "gini10484-afk.github.io" });
+  assert.match(out.body, /\n@gini10484-afk\n/);
+  const bare = buildReminder(data, { today, force: true });
+  assert.ok(!/@/.test(bare.body));
+});
