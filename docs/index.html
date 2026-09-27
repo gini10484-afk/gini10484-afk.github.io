@@ -163,6 +163,30 @@
   .p-ctrl input[type=range] { flex-grow: 1; height: 44px; padding: 0; border: 0; background: none; accent-color: var(--t); }
   .p-ctrl select { height: 36px; font-size: 13px; padding: 0 8px; }
 
+  /* 板块 */
+  .sec-bar { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; justify-content: space-between; margin-top: 28px; }
+  .sec-table td, .sec-table th { padding: 12px 8px; }
+  .sec-table tbody tr.row { cursor: pointer; }
+  .sec-table tbody tr.row:hover td { background: var(--soft); }
+  .sec-table td.nm { font-weight: 600; white-space: normal; }
+  .sec-table td.nm .sub { font-weight: 400; }
+  .sec-table .up { color: var(--q); } .sec-table .dn { color: var(--t-ink); }
+  .heat { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .heat .hb { position: relative; width: 64px; height: 6px; border-radius: 3px; background: var(--rule-2); }
+  .heat .hb i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--ink-2); }
+  .heat .hb b { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
+  .chip { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+  .chip.in { background: var(--hi); color: var(--q); }
+  .chip.out { background: var(--warn-bg); color: var(--t-ink); }
+  .chip.cold, .chip.flat { background: var(--soft); color: var(--muted); }
+  tr.kid td { font-size: 13px; color: var(--ink-2); background: var(--soft); padding-top: 8px; padding-bottom: 8px; }
+  tr.kid td:first-child { padding-left: 18px; }
+  .caret { display: inline-block; width: 12px; color: var(--muted); font-size: 11px; }
+  @media (max-width: 760px) {
+    .sec-table th.q3, .sec-table td.q3 { display: none; }
+    .heat .hb { width: 36px; }
+  }
+
   /* 记录 */
   .form5 { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px 20px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: end; margin-top: 16px; }
   .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
@@ -229,6 +253,7 @@
   <nav class="tabs" role="tablist" aria-label="页面">
     <button role="tab" id="tab-home" aria-controls="p-home" aria-selected="true">本周怎么投</button>
     <button role="tab" id="tab-backtest" aria-controls="p-backtest" aria-selected="false">回测</button>
+    <button role="tab" id="tab-sectors" aria-controls="p-sectors" aria-selected="false">板块</button>
     <button role="tab" id="tab-records" aria-controls="p-records" aria-selected="false">我的记录</button>
     <button role="tab" id="tab-settings" aria-controls="p-settings" aria-selected="false">设置与说明</button>
   </nav>
@@ -315,6 +340,41 @@
     <section class="notes2">
       <div class="note"><span class="k">换个年代还成立吗</span><p id="rollText">—</p></div>
       <div class="note"><span class="k">为什么放一条对照</span><p id="cmpText">—</p></div>
+    </section>
+  </main>
+
+  <!-- ============ 板块 ============ -->
+  <main id="p-sectors" role="tabpanel" aria-labelledby="tab-sectors" hidden>
+    <section>
+      <p class="eyebrow" id="sDate">美股板块热度</p>
+      <h1 class="h-page" style="margin-top:8px">钱在往哪儿走</h1>
+      <p class="lede" id="sLede">正在读取板块数据…</p>
+    </section>
+    <section id="sBody" hidden>
+      <div class="sec-bar">
+        <h2>科技细分</h2>
+        <label class="inl">排序 <select id="sSort"><option value="heat">按热度</option><option value="w">按近 1 周</option><option value="m">按近 1 月</option><option value="q">按近 3 月</option></select></label>
+      </div>
+      <p class="small" style="margin-top:6px">点一行看里面每只股票。</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="sec-table" id="sThemes">
+          <thead><tr><th scope="col">细分</th><th scope="col">近 1 周</th><th scope="col">近 1 月</th><th scope="col" class="q3">近 3 月</th><th scope="col">热度</th><th scope="col">判断</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="sec-bar"><h2>11 个行业</h2></div>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="sec-table" id="sSectors">
+          <thead><tr><th scope="col">行业</th><th scope="col">近 1 周</th><th scope="col">近 1 月</th><th scope="col" class="q3">近 3 月</th><th scope="col">热度</th><th scope="col">判断</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note" style="margin-top:28px">
+        <span class="k">这些数字怎么来的</span>
+        <p>真实的资金流向要付费数据，这里用公开行情估算：<b>热度</b> = 最近 5 个交易日的日均成交额 ÷ 之前 60 天的日均成交额，再和同一组的平均比。
+          大于 1 就是这周比平常更多人在买卖它。<b>判断</b>看热度和近 1 周涨跌：放量上涨当作资金流入，放量下跌当作资金流出（在被抛售），成交变少就是关注度下降。
+          细分板块按几只代表股票等权平均。每个美股交易日收盘后自动更新，只是观察用，不是买卖建议。</p>
+      </div>
     </section>
   </main>
 
@@ -456,7 +516,7 @@
   function load(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
 
   // ============ 标签页 ============
-  var TABS = ["home", "backtest", "records", "settings"];
+  var TABS = ["home", "backtest", "sectors", "records", "settings"];
   function showTab(name, push) {
     if (TABS.indexOf(name) < 0) name = "home";
     TABS.forEach(function (t) {
@@ -467,6 +527,7 @@
     });
     if (push && location.hash !== "#" + name) history.replaceState(null, "", name === "home" ? location.pathname : "#" + name);
     if (name === "backtest") player.draw();
+    if (name === "sectors") loadSectors();
   }
   TABS.forEach(function (t, i) {
     $("tab-" + t).addEventListener("click", function () { showTab(t, true); });
@@ -767,6 +828,93 @@
     $("pChart").addEventListener("pointerleave", function () { if (hover >= 0) { hover = -1; draw(); } });
     return { setData: setData, draw: draw };
   })();
+
+  // ============ 板块热度 ============
+  var sec = { data: null, loading: false, open: {} };
+  function signal(x) {
+    if (x.heat >= 1.05 && x.w > 0.5) return { k: "in", t: "资金流入" };
+    if (x.heat >= 1.05 && x.w < -0.5) return { k: "out", t: "资金流出" };
+    if (x.heat < 0.95) return { k: "cold", t: "关注度下降" };
+    return { k: "flat", t: "平稳" };
+  }
+  function pctCell(v, cls) {
+    var td = el("td", "num" + (cls ? " " + cls : ""));
+    if (v == null) { td.textContent = "—"; return td; }
+    td.textContent = (v > 0 ? "+" : v < 0 ? MINUS : "") + Math.abs(v).toFixed(1) + "%";
+    td.className += v > 0.05 ? " up" : v < -0.05 ? " dn" : "";
+    return td;
+  }
+  function heatCell(h) {
+    var td = el("td"), w = el("span", "heat"), bar = el("span", "hb"), fill = el("i"), mid = el("b");
+    fill.style.width = Math.max(4, Math.min(100, h / 2 * 100)) + "%";
+    bar.appendChild(fill); bar.appendChild(mid);
+    w.appendChild(el("span", "num", h.toFixed(2)));
+    w.appendChild(bar); td.appendChild(w);
+    return td;
+  }
+  function loadSectors() {
+    if (sec.data || sec.loading) return;
+    sec.loading = true;
+    fetch("sectors.json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (d) { sec.data = d; renderSectors(); })
+      .catch(function () { $("sLede").textContent = "板块数据还没生成，下一次自动更新（美股收盘后）之后就有了。"; })
+      .then(function () { sec.loading = false; });
+  }
+  function renderSectors() {
+    var d = sec.data;
+    if (!d || !d.themes) return;
+    $("sBody").hidden = false;
+    $("sDate").textContent = "美股板块热度 · 数据到 " + cnDate(d.asOf) + " 收盘";
+    var themes = d.themes.slice();
+    var ins = themes.filter(function (x) { return signal(x).k === "in"; }).sort(function (a, b) { return b.heat - a.heat; });
+    var outs = themes.filter(function (x) { return signal(x).k === "out"; });
+    var colds = themes.filter(function (x) { return signal(x).k === "cold"; }).sort(function (a, b) { return a.heat - b.heat; });
+    var secIn = d.sectors.filter(function (x) { return signal(x).k === "in"; }).map(function (x) { return x.name; });
+    var secOut = d.sectors.filter(function (x) { return signal(x).k === "out"; }).map(function (x) { return x.name; });
+    var parts = [];
+    function nm(x) { return x.name + "（" + (x.w > 0 ? "+" : "") + x.w.toFixed(1) + "%，热度 " + x.heat.toFixed(2) + "）"; }
+    if (ins.length) parts.push("科技里钱最往里挤的是 " + ins.slice(0, 3).map(nm).join("、") + "。");
+    if (outs.length) parts.push("在被抛售的是 " + outs.map(nm).join("、") + "。");
+    if (colds.length) parts.push("关注度明显下降的是 " + colds.slice(0, 3).map(function (x) { return x.name; }).join("、") + "。");
+    if (secIn.length || secOut.length) parts.push("11 个行业里，" + (secIn.length ? secIn.join("、") + " 放量上涨" : "") + (secIn.length && secOut.length ? "，" : "") + (secOut.length ? secOut.join("、") + " 放量下跌" : "") + "。");
+    $("sLede").textContent = parts.join(" ") || "这周各板块都比较平稳，没有明显的放量进出。";
+    drawThemes(); drawSectors();
+  }
+  function drawThemes() {
+    var d = sec.data, key = $("sSort").value;
+    var list = d.themes.slice().sort(function (a, b) { return (b[key] == null ? -1e9 : b[key]) - (a[key] == null ? -1e9 : a[key]); });
+    var tb = $("sThemes").tBodies[0]; tb.textContent = "";
+    list.forEach(function (x) {
+      var open = !!sec.open[x.name], sg = signal(x);
+      var tr = el("tr", "row"); tr.tabIndex = 0; tr.setAttribute("aria-expanded", open ? "true" : "false");
+      var td = el("td", "nm"); td.appendChild(el("span", "caret", open ? "▾" : "▸")); td.appendChild(document.createTextNode(x.name));
+      td.appendChild(el("span", "sub", x.stocks.map(function (k) { return k.s; }).join(" · "))); tr.appendChild(td);
+      tr.appendChild(pctCell(x.w)); tr.appendChild(pctCell(x.m)); tr.appendChild(pctCell(x.q, "q3")); tr.appendChild(heatCell(x.heat));
+      var tdc = el("td"); tdc.appendChild(el("span", "chip " + sg.k, sg.t)); tr.appendChild(tdc);
+      function toggle() { sec.open[x.name] = !open; drawThemes(); }
+      tr.addEventListener("click", toggle);
+      tr.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+      tb.appendChild(tr);
+      if (open) x.stocks.slice().sort(function (a, b) { return (b.w || 0) - (a.w || 0); }).forEach(function (k) {
+        var kr = el("tr", "kid"); kr.appendChild(el("td", null, k.s));
+        kr.appendChild(pctCell(k.w)); kr.appendChild(pctCell(k.m)); kr.appendChild(pctCell(k.q, "q3")); kr.appendChild(heatCell(k.heat));
+        var sg2 = signal(k), tdk = el("td"); tdk.appendChild(el("span", "chip " + sg2.k, sg2.t)); kr.appendChild(tdk);
+        tb.appendChild(kr);
+      });
+    });
+  }
+  function drawSectors() {
+    var d = sec.data, tb = $("sSectors").tBodies[0]; tb.textContent = "";
+    d.sectors.slice().sort(function (a, b) { return b.heat - a.heat; }).forEach(function (x) {
+      var tr = el("tr"), sg = signal(x);
+      var td = el("td", "nm"); td.appendChild(document.createTextNode(x.name)); td.appendChild(el("span", "sub", x.s)); tr.appendChild(td);
+      tr.appendChild(pctCell(x.w)); tr.appendChild(pctCell(x.m)); tr.appendChild(pctCell(x.q, "q3")); tr.appendChild(heatCell(x.heat));
+      var tdc = el("td"); tdc.appendChild(el("span", "chip " + sg.k, sg.t)); tr.appendChild(tdc);
+      tb.appendChild(tr);
+    });
+  }
+  $("sSort").addEventListener("change", function () { if (sec.data) drawThemes(); });
 
   // ============ 我的记录 ============
   var trades = [];

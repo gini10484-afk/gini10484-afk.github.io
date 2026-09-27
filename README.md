@@ -10,6 +10,9 @@
 
 - **本周怎么投**：一句话结论 + 投多少 / 买什么 / 要不要卖 TQQQ；离「买 TQQQ」的两个条件各差多少；一张表看懂什么情况投几倍、买哪个；填上持仓就算出要不要卖几股
 - **回测**：只买 QQQ / 大跌才买 TQQQ（你的规则）/ 按风险调杠杆（对照）三行对比；**27 年定投回放**——按播放键，账户市值一周周长出来，经过 2000、2008、2020、2022 几次大跌时标出来；任选 10 年还成立吗
+- **板块**：美股资金这周往哪儿走——11 个行业 + 科技细分（AI 芯片、存储、光模块 / 光通信、网络 / 高速互联、半导体设备、晶圆代工、AI 服务器、数据中心电力、软件、网络安全、互联网巨头、消费电子），
+  每个细分看近 1 周 / 1 月 / 3 月涨跌和「成交热度」，点开看每只代表股票；放量上涨算资金流入、放量下跌算资金流出。
+  真实资金流是付费数据，这里是用 Yahoo 公开行情估算的（`scripts/update_sectors.py`，每天跟着行情一起更新，细分和股票名单在文件最上面改）
 - **我的记录**：持仓股数 + 买入记录（真实成本、收益、有没有按规则执行，能邮件备份、粘贴恢复）
 - **设置与说明**：4 个常用设置，其余收在「更多设置」；用之前要知道的 4 件事
 - **定投日提醒**：定投日北京时间 20:00，GitHub 发邮件告诉你这次该投多少、买哪个、要不要卖
@@ -227,7 +230,8 @@ TQQQ 当日涨跌 = 3 × QQQ 当日涨跌 + 漂移 / 252
 
 ```bash
 node --test tests/strategy.test.js   # 规则、回测、上限、持仓、卖出信号、买入记录，以及库里保留的稳妥模式 / 年度定投 / 按风险调杠杆函数（47 项）
-node --test tests/reminder.test.js   # 定投日提醒（14 项）
+node --test tests/reminder.test.js   # 定投日提醒（16 项）
+python3 -m unittest discover -s tests -p "test_*.py"   # 板块热度的计算（3 项）
 python3 scripts/update_data.py       # 手动更新一次数据
 ```
 
@@ -247,7 +251,8 @@ qqq-tqqq-dca/
 │   └── data.json              QQQ + TQQQ + SPY 行情（自动更新，不用手动改）
 ├── scripts/
 │   ├── update_data.py         拉行情、检查、模拟 2010 年前的 TQQQ、写 data.json
-│   └── weekly_reminder.js     算这次投多少、买哪个，生成提醒内容
+│   ├── weekly_reminder.js     算这次投多少、买哪个，生成提醒内容
+│   └── update_sectors.py      板块热度：11 个行业 + 科技细分，写 docs/sectors.json
 ├── tests/                     node --test 用的测试
 ├── workflow/                  工作流的可见副本（要复制到 .github/workflows/ 里）
 ├── requirements.txt
