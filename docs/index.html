@@ -6,10 +6,16 @@
 <title>纳指定投</title>
 <meta name="description" content="平时定投 QQQ，大跌时买 TQQQ，TQQQ 不超过上限：这周投多少、买什么、要不要卖，每个美股交易日自动更新">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='8' fill='%23151515'/%3E%3Cpath d='M6 19l5-4 4 3 7-9' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="纳指定投">
+<link rel="preload" href="/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* 数字字体放在自己网站上（Google Fonts 在国内经常连不上，会让页面白屏） */
+  @font-face { font-family: Manrope; src: url("/fonts/manrope.woff2") format("woff2"); font-weight: 200 800; font-style: normal; font-display: swap; }
   :root {
     color-scheme: light;
     --page: #fbfaf7; --card: #ffffff; --soft: #f3f1ec; --hi: #eef2fc;
@@ -240,6 +246,10 @@
         <div class="tile"><span class="k">投多少</span><span class="v num" id="tAmt">—</span><span class="s" id="tAmtS"></span></div>
         <div class="tile"><span class="k">买什么</span><span class="v num" id="tAsset">—</span><span class="s" id="tAssetS"></span></div>
         <div class="tile"><span class="k">要不要卖 TQQQ</span><span class="v" id="tSell">—</span><span class="s" id="tSellS"></span></div>
+      </div>
+      <div class="actions" style="margin-top:16px">
+        <button class="btn primary" id="logThis" type="button">我按建议买了，记一笔</button>
+        <span class="small">会跳到「我的记录」并填好日期、标的和金额，改一下实际成交价再点「记一笔」</span>
       </div>
     </section>
 
@@ -494,6 +504,7 @@
     var hasHold = (+holding.qqqShares > 0) || (+holding.tqqqShares > 0);
     var st = DCA.currentStatus(s, cfg, hasHold ? holding : null, { dd: cache.dd, tl: cache.tl });
     var b = st.buy, g = st.gap, h = st.hold;
+    cache.home = st;
     var ddWord = cfg.basis === "ath" ? "历史高点" : "一年高点";
     $("hDate").textContent = "下一次定投 · " + cnMD(st.nextDate) + " " + st.weekdayName + " · 按 " + cnMD(st.basedOn) + " 收盘价判断";
 
@@ -820,6 +831,21 @@
       else { t.select(); jMsg("已选中，按 Ctrl+C 复制"); }
     });
     $("jClose").addEventListener("click", function () { $("jBox").hidden = true; });
+    // 首页「我按建议买了」：按这次的建议把表单填好
+    $("logThis").addEventListener("click", function () {
+      var st = cache.home;
+      if (!st) return;
+      var b = st.buy, split = b.asset === "TQQQ" && state.cfg.flowShare < 100;
+      var today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      $("jDate").value = today < st.nextDate ? st.nextDate : today; // 周末提前记就按下一个定投日
+      $("jAsset").value = b.asset;
+      $("jAmount").value = Math.round((split ? b.tqqqAmount : b.amount) * 100) / 100;
+      $("jPrice").value = "";
+      fillPrice();
+      showTab("records", true);
+      $("jPrice").focus();
+      jMsg(split ? "这次分两笔：先记 TQQQ " + moneyS(b.tqqqAmount) + "，再把剩下的 " + moneyS(b.amount - b.tqqqAmount) + " 记成 QQQ" : "填好了，改一下成交价再点「记一笔」");
+    });
   }
   function fillPrice() {
     var s = state.series, d = $("jDate").value, a = $("jAsset").value, idx = s.n - 1;
@@ -953,6 +979,9 @@
     }).observe($("pChart"));
   }
   showTab(location.hash.slice(1));
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () { /* 离线功能可有可无 */ }); });
+  }
   fetch("data.json", { cache: "no-cache" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
     .then(init)
