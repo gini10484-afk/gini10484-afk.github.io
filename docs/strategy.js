@@ -177,9 +177,28 @@
       if (isFinite(sp) && sp > 0) s.spy[i] = sp; else spyOk = false;
     }
     s.hasSpy = spyOk;
+    // 哪套计划：纳指100（QQQ + TQQQ）或标普500（VOO + UPRO）。内部一律把「平时买的」叫 QQQ、「杠杆」叫 TQQQ，
+    // 页面和提醒用 names 换成真实代码显示
+    s.plan = (data && data.plan) || "nasdaq";
+    s.names = planNames(s.plan, data && data.names);
     s.firstRealIdx = -1;
     for (var k = 0; k < n; k++) if (s.real[k]) { s.firstRealIdx = k; break; }
     return s;
+  }
+
+  var PLAN_NAMES = {
+    nasdaq: { base: "QQQ", lev: "TQQQ", index: "纳指100", short: "纳指" },
+    sp500: { base: "VOO", lev: "UPRO", index: "标普500", short: "标普" },
+  };
+  function planNames(plan, given) {
+    var d = PLAN_NAMES[plan] || PLAN_NAMES.nasdaq, g = given || {}, out = {};
+    for (var k in d) out[k] = g[k] ? String(g[k]) : d[k];
+    return out;
+  }
+  // 内部角色（QQQ = 平时买的，TQQQ = 杠杆）→ 这套计划里的真实代码
+  function displayAsset(asset, names) {
+    var n = names || PLAN_NAMES.nasdaq;
+    return asset === "TQQQ" ? n.lev : asset === "QQQ" ? n.base : asset;
   }
 
   // 离最高点跌了多少（%）
@@ -1072,6 +1091,7 @@
 
   // 联邦基金利率年平均（%），现金部分按它计息。2026 年是估的
   var CASH_RATES = {
+    1993: 3.02, 1994: 4.20, 1995: 5.84, 1996: 5.30, 1997: 5.46, 1998: 5.35,
     1999: 4.97, 2000: 6.24, 2001: 3.89, 2002: 1.67, 2003: 1.13, 2004: 1.35, 2005: 3.22,
     2006: 4.97, 2007: 5.02, 2008: 1.92, 2009: 0.16, 2010: 0.18, 2011: 0.10, 2012: 0.14,
     2013: 0.11, 2014: 0.09, 2015: 0.13, 2016: 0.40, 2017: 1.00, 2018: 1.83, 2019: 2.16,
@@ -1333,8 +1353,11 @@
 
   // ---------- 买入记录 ----------
   var ASSETS = ["QQQ", "TQQQ", "SPY"];
+  // 标普500 计划的真实代码对应到内部角色
+  var ASSET_ALIAS = { VOO: "QQQ", UPRO: "TQQQ" };
   function assetOf(v) {
     var u = String(v == null ? "" : v).toUpperCase().trim();
+    if (ASSET_ALIAS[u]) return ASSET_ALIAS[u];
     return ASSETS.indexOf(u) >= 0 ? u : "QQQ";
   }
   function priceOf(series, asset, i) {
@@ -1435,12 +1458,15 @@
     }).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; })
       .map(function (t) {
         return [t.date, Math.round(Number(t.amount) * 100) / 100,
-          Math.round(Number(t.price) * 10000) / 10000, assetOf(t.asset), String(t.note || "")];
+          Math.round(Number(t.price) * 10000) / 10000, displayAsset(assetOf(t.asset), opts.names), String(t.note || "")];
       });
-    var json = JSON.stringify({ app: "qqq-tqqq-dca", v: 2, trades: list });
-    var subject = "定投买入记录备份 " + (opts.today || "") + "（" + list.length + " 笔）";
+    var obj = { app: "qqq-tqqq-dca", v: 2, trades: list };
+    if (opts.plan) obj = { app: "qqq-tqqq-dca", v: 2, plan: opts.plan, trades: list };
+    var json = JSON.stringify(obj);
+    var pn = opts.planName ? opts.planName + " " : "";
+    var subject = pn + "定投买入记录备份 " + (opts.today || "") + "（" + list.length + " 笔）";
     var body = [
-      "这是我的定投买入记录备份（" + (opts.today ? opts.today + "，" : "") + "共 " + list.length + " 笔）。",
+      "这是我的" + pn + "定投买入记录备份（" + (opts.today ? opts.today + "，" : "") + "共 " + list.length + " 笔）。",
       "",
       "恢复方法：打开 " + (opts.siteUrl || "定投网站") + "，在「我的买入记录」点「粘贴导入」，把下面两条横线之间的内容（连横线一起）粘贴进去。",
       "",
@@ -1465,7 +1491,7 @@
     var list = Array.isArray(obj) ? obj : obj && obj.trades;
     if (!Array.isArray(list)) throw new Error("没有找到买入记录");
     var v = (obj && obj.v) || 1;
-    return list.map(function (t) {
+    var out = list.map(function (t) {
       if (!Array.isArray(t)) {
         return { date: t && t.date, amount: t && t.amount, price: t && t.price,
           asset: assetOf(t && t.asset), note: (t && t.note) || "" };
@@ -1479,6 +1505,9 @@
         note: String((isAsset ? t[4] : t[3]) || ""),
       };
     });
+    // 哪套计划的备份；以前的备份没写，都是纳指100 的
+    out.plan = (obj && !Array.isArray(obj) && obj.plan) || "nasdaq";
+    return out;
   }
 
   return {
@@ -1534,6 +1563,9 @@
     leverStatus: leverStatus,
     ASSETS: ASSETS,
     assetOf: assetOf,
+    PLAN_NAMES: PLAN_NAMES,
+    planNames: planNames,
+    displayAsset: displayAsset,
     suggestionForDate: suggestionForDate,
     summarizeTrades: summarizeTrades,
     formatTradesBackup: formatTradesBackup,

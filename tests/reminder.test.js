@@ -156,3 +156,32 @@ test("手动测试提醒：周末也会发，标题标上【测试】", () => {
   assert.match(out.title, /^【测试】/);
   assert.equal(buildReminder(data, { today: "2026-09-27" }).skip, true);
 });
+
+// ---------- 纳指 + 标普合并成一封 ----------
+const { buildCombined } = require("../scripts/weekly_reminder.js");
+
+test("两个计划合并成一封：标题和正文都写两个，分别用各自的代码", () => {
+  const nas = makeData(100);
+  const sp = Object.assign(makeData(70), { plan: "sp500" });
+  const out = buildCombined([nas, sp], { today: "2026-09-14", config: CFG, owner: "me", repo: "r" });
+  assert.equal(out.skip, false);
+  assert.match(out.title, /纳指投 \$100\.00 买 QQQ（×1） · 标普投 .* 买 UPRO/);
+  assert.match(out.body, /## 纳指100：这次投/);
+  assert.match(out.body, /## 标普500：这次投 .*买 \*\*UPRO\*\*/);
+  assert.match(out.body, /### 买 UPRO 的两个条件/);
+  assert.match(out.body, /换回 VOO/);
+  assert.equal((out.body.match(/不是投资建议/g) || []).length, 1, "结尾只写一次");
+  assert.equal(out.plans.length, 2);
+});
+
+test("标普数据拿不到时只发纳指，并说明一句", () => {
+  const out = buildCombined([makeData(100), null], { today: "2026-09-14", config: CFG });
+  assert.equal(out.skip, false);
+  assert.ok(!/标普投/.test(out.title));
+  assert.match(out.body, /标普500 的行情这次没拿到/);
+});
+
+test("合并提醒同样只在定投日发", () => {
+  assert.equal(buildCombined([makeData(100), makeData(100)], { today: "2026-09-15", config: CFG }).skip, true);
+  assert.equal(buildCombined([makeData(100), makeData(100)], { today: "2026-09-19", force: true, config: CFG }).title.startsWith("【测试】"), true);
+});

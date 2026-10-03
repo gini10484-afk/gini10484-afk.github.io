@@ -683,3 +683,38 @@ test("现在该调到什么配比：按持仓给出买卖股数", () => {
   assert.equal(bare.hold, undefined);
   assert.ok(bare.volForMax > 0);
 });
+
+// ---------- 两套计划（纳指100 / 标普500） ----------
+test("数据里写了 plan 和 names：标普计划显示 VOO / UPRO，老数据默认是纳指", () => {
+  const rows = [["2026-09-14", 600, 650, 100, 1, 650], ["2026-09-15", 601, 651, 101, 1, 651]];
+  const sp = DCA.prepare({ plan: "sp500", rows });
+  assert.equal(sp.plan, "sp500");
+  assert.deepEqual([sp.names.base, sp.names.lev, sp.names.index], ["VOO", "UPRO", "标普500"]);
+  const old = DCA.prepare({ rows });
+  assert.equal(old.plan, "nasdaq");
+  assert.deepEqual([old.names.base, old.names.lev], ["QQQ", "TQQQ"]);
+  assert.equal(DCA.displayAsset("TQQQ", sp.names), "UPRO");
+  assert.equal(DCA.displayAsset("QQQ", sp.names), "VOO");
+  assert.equal(DCA.displayAsset("SPY", sp.names), "SPY");
+});
+
+test("VOO / UPRO 记账时对应到「平时买的」和「杠杆」", () => {
+  assert.equal(DCA.assetOf("voo"), "QQQ");
+  assert.equal(DCA.assetOf("UPRO"), "TQQQ");
+  assert.equal(DCA.assetOf("TQQQ"), "TQQQ");
+});
+
+test("标普的备份写真实代码并标明计划；导入时能认出是哪个计划", () => {
+  const list = [{ date: "2026-09-14", amount: 100, price: 150.5, asset: "TQQQ" }, { date: "2026-09-21", amount: 100, price: 700, asset: "QQQ" }];
+  const bk = DCA.formatTradesBackup(list, { today: "2026-10-03", plan: "sp500", planName: "标普500", names: DCA.planNames("sp500") });
+  assert.match(bk.subject, /^标普500 定投买入记录备份/);
+  assert.match(bk.json, /"plan":"sp500"/);
+  assert.match(bk.json, /"UPRO"/);
+  assert.match(bk.json, /"VOO"/);
+  const back = DCA.parseTradesBackup(bk.body);
+  assert.equal(back.plan, "sp500");
+  assert.deepEqual(back.map((t) => t.asset), ["TQQQ", "QQQ"]);
+  // 以前的备份没写计划，当成纳指
+  const old = DCA.parseTradesBackup(DCA.formatTradesBackup(list, { today: "2026-10-03" }).body);
+  assert.equal(old.plan, "nasdaq");
+});

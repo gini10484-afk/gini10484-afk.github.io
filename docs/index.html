@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>纳指定投</title>
-<meta name="description" content="平时定投 QQQ，大跌时买 TQQQ，TQQQ 不超过上限：这周投多少、买什么、要不要卖，每个美股交易日自动更新">
+<meta name="description" content="纳指100（QQQ + TQQQ）和标普500（VOO + UPRO）两套定投：平时买指数，大跌才买 3 倍杠杆并守住上限。这周投多少、买什么、要不要卖，每个美股交易日自动更新">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='8' fill='%23151515'/%3E%3Cpath d='M6 19l5-4 4 3 7-9' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -63,7 +63,12 @@
   .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; }
   .brand svg rect { fill: var(--ink); } .brand svg path { stroke: var(--page); }
-  .meta { font-size: 13px; color: var(--muted); text-align: right; }
+  .meta { font-size: 13px; color: var(--muted); text-align: right; margin-left: auto; }
+  .top { flex-wrap: wrap; }
+  .plan-sw { display: inline-flex; gap: 2px; padding: 3px; background: var(--soft); border-radius: 999px; }
+  .plan-sw button { font: inherit; font-size: 14px; height: 38px; padding: 0 16px; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .plan-sw button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .plan-sw button:disabled { cursor: progress; }
 
   .tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--rule); margin: 20px 0 32px; overflow-x: auto; scrollbar-width: none; }
   .tabs button { font: inherit; font-size: 15px; color: var(--muted); background: none; border: 0; padding: 0 0 12px;
@@ -237,6 +242,12 @@
   .facts span { font-size: 14px; line-height: 1.7; color: var(--ink-2); }
 
   footer { margin-top: 48px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  @media (max-width: 600px) {
+    .top { row-gap: 10px; }
+    .meta { flex-basis: 100%; text-align: left; margin-left: 0; order: 3; }
+    .plan-sw { margin-left: auto; }
+    .plan-sw button { padding: 0 12px; }
+  }
 
   @media (max-width: 760px) {
     .wrap { padding-top: 20px; }
@@ -268,7 +279,11 @@
   <header class="top">
     <div class="brand">
       <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8"></rect><path d="M6 19l5-4 4 3 7-9" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-      纳指定投
+      <span id="brandName">纳指定投</span>
+    </div>
+    <div class="plan-sw" id="planSw" role="group" aria-label="选择定投计划">
+      <button type="button" data-plan="nasdaq" aria-pressed="true">纳指100</button>
+      <button type="button" data-plan="sp500" aria-pressed="false">标普500</button>
     </div>
     <div class="meta" id="meta">正在读取行情…</div>
   </header>
@@ -294,7 +309,7 @@
       <div class="tiles">
         <div class="tile"><span class="k">投多少</span><span class="v num" id="tAmt">—</span><span class="s" id="tAmtS"></span></div>
         <div class="tile"><span class="k">买什么</span><span class="v num" id="tAsset">—</span><span class="s" id="tAssetS"></span></div>
-        <div class="tile"><span class="k">要不要卖 TQQQ</span><span class="v" id="tSell">—</span><span class="s" id="tSellS"></span></div>
+        <div class="tile"><span class="k">要不要卖 <span class="nm-lev">TQQQ</span></span><span class="v" id="tSell">—</span><span class="s" id="tSellS"></span></div>
       </div>
       <div class="actions" style="margin-top:16px">
         <button class="btn primary" id="logThis" type="button">我按建议买了，记一笔</button>
@@ -304,10 +319,10 @@
 
     <section class="two">
       <div>
-        <h2>离买 TQQQ 还差多远</h2>
+        <h2>离买 <span class="nm-lev">TQQQ</span> 还差多远</h2>
         <div class="cond" id="c1"></div>
         <div class="cond" id="c2"></div>
-        <p class="small" style="margin-top:14px">两个条件都满足，那次的钱才改买 TQQQ。</p>
+        <p class="small" style="margin-top:14px">两个条件都满足，那次的钱才改买 <span class="nm-lev">TQQQ</span>。</p>
       </div>
       <div>
         <h2>什么时候会投得不一样</h2>
@@ -317,9 +332,9 @@
 
     <section class="strip">
       <span class="title">我的持仓</span>
-      <label class="inl">QQQ <input id="hQ" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"> 股</label>
-      <label class="inl">TQQQ <input id="hT" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"> 股</label>
-      <p class="res" id="holdRes">填上股数，就告诉你 TQQQ 占多少、要不要卖几股。只存在你的浏览器里。</p>
+      <label class="inl"><span class="nm-base">QQQ</span> <input id="hQ" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"> 股</label>
+      <label class="inl"><span class="nm-lev">TQQQ</span> <input id="hT" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"> 股</label>
+      <p class="res" id="holdRes">填上股数，就告诉你 <span class="nm-lev">TQQQ</span> 占多少、要不要卖几股。只存在你的浏览器里。</p>
     </section>
   </main>
 
@@ -446,9 +461,9 @@
     <section>
       <h1 class="h-page">我的持仓</h1>
       <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-top:14px">
-        <label class="field" style="width:180px">QQQ 股数<input id="rQ" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
-        <label class="field" style="width:180px">TQQQ 股数<input id="rT" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
-        <p class="small" style="padding-bottom:12px">填上以后，首页会直接算 TQQQ 占多少、要不要卖几股。</p>
+        <label class="field" style="width:180px"><span><span class="nm-base">QQQ</span> 股数</span><input id="rQ" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+        <label class="field" style="width:180px"><span><span class="nm-lev">TQQQ</span> 股数</span><input id="rT" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></label>
+        <p class="small" style="padding-bottom:12px">填上以后，首页会直接算 <span class="nm-lev">TQQQ</span> 占多少、要不要卖几股。每个计划各存各的。</p>
       </div>
     </section>
 
@@ -462,7 +477,7 @@
       </div>
       <div class="form5">
         <label class="field">日期<input id="jDate" type="date"></label>
-        <label class="field">买了什么<select id="jAsset"><option value="QQQ">QQQ</option><option value="TQQQ">TQQQ</option></select></label>
+        <label class="field">买了什么<select id="jAsset"><option value="QQQ" class="nm-base">QQQ</option><option value="TQQQ" class="nm-lev">TQQQ</option></select></label>
         <label class="field">花了多少（$）<input id="jAmount" type="number" min="0" step="10" inputmode="decimal"></label>
         <label class="field">成交价（$）<input id="jPrice" type="number" min="0" step="0.01" inputmode="decimal"></label>
         <button class="btn primary" id="jAdd" type="button">记一笔</button>
@@ -507,8 +522,8 @@
               <option value="w4">每周四</option><option value="w5">每周五</option><option value="daily">每个交易日</option>
             </select>
           </label>
-          <label class="field">跌多少才买 TQQQ（%）<input id="dipThreshold" type="number" min="0" max="60" step="1" inputmode="decimal"></label>
-          <label class="field">TQQQ 最多占（%）<input id="tqqqCap" type="number" min="0" max="100" step="1" inputmode="decimal"></label>
+          <label class="field"><span>跌多少才买 <span class="nm-lev">TQQQ</span>（%）</span><input id="dipThreshold" type="number" min="0" max="60" step="1" inputmode="decimal"></label>
+          <label class="field"><span><span class="nm-lev">TQQQ</span> 最多占（%）</span><input id="tqqqCap" type="number" min="0" max="100" step="1" inputmode="decimal"></label>
         </div>
         <details>
           <summary>更多设置：回撤跟谁比、加码倍数、卖出方式</summary>
@@ -516,8 +531,8 @@
             <label class="field">回撤跟谁比
               <select id="basis"><option value="52w">近一年最高点</option><option value="ath">历史最高点</option></select>
             </label>
-            <label class="field">触发时买 TQQQ 的比例（%）<input id="flowShare" type="number" min="0" max="100" step="5" inputmode="decimal"></label>
-            <label class="field">怎么卖 TQQQ
+            <label class="field"><span>触发时买 <span class="nm-lev">TQQQ</span> 的比例（%）</span><input id="flowShare" type="number" min="0" max="100" step="5" inputmode="decimal"></label>
+            <label class="field"><span>怎么卖 <span class="nm-lev">TQQQ</span></span>
               <select id="sellMode">
                 <option value="cap">只守上限（推荐）</option>
                 <option value="ma">涨回均线全卖</option>
@@ -537,7 +552,7 @@
           <span class="small" id="cfgNote" role="status"></span>
         </div>
       </div>
-      <p class="small" style="margin-top:10px">设置只存在你的浏览器里。定投日提醒邮件按默认设置（每周一 $100）计算。</p>
+      <p class="small" style="margin-top:10px">设置只存在你的浏览器里，纳指100 和标普500 各存一份。定投日提醒邮件按默认设置（每周一 $100）计算，两个计划写在同一封里。</p>
     </section>
 
     <section>
@@ -571,10 +586,19 @@
   function cnYM(ds) { var p = ds.split("-"); return +p[0] + "年" + +p[1] + "月"; }
   function mult(m) { return (Math.round(m * 100) / 100) + ""; }
 
-  var CFG_KEY = "qqq-tqqq-config-v1", HOLD_KEY = "qqq-tqqq-holdings-v1", TRADES_KEY = "qqq-tqqq-trades-v1", EMAIL_KEY = "qqq-tqqq-backup-email";
+  var EMAIL_KEY = "qqq-tqqq-backup-email", PLAN_KEY = "dingtou-plan";
   var SITE_URL = "https://gini10484-afk.github.io/";
-  var state = { series: null, cfg: DCA.withDefaults({}) };
+  // 两套计划：各用各的数据文件，各存各的设置、持仓和买入记录（纳指那几个键名保持不变，旧数据不受影响）
+  var PLAN_DEF = {
+    nasdaq: { file: "data.json", brand: "纳指定投", cfg: "qqq-tqqq-config-v1", hold: "qqq-tqqq-holdings-v1", trades: "qqq-tqqq-trades-v1" },
+    sp500: { file: "data-sp500.json", brand: "标普定投", cfg: "sp500-config-v1", hold: "sp500-holdings-v1", trades: "sp500-trades-v1" },
+  };
+  var state = { plan: "nasdaq", series: null, data: null, cfg: DCA.withDefaults({}) };
   var cache = {};
+  function K() { return PLAN_DEF[state.plan]; }
+  function N() { return (state.series && state.series.names) || DCA.planNames("nasdaq"); }
+  function D(asset) { return DCA.displayAsset(asset, N()); } // 内部角色 QQQ/TQQQ → 这个计划的代码
+  function nmText(t) { var n = N(); return String(t || "").replace(/TQQQ/g, n.lev).replace(/QQQ/g, n.base); }
   function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 存不了就算了 */ } }
   function load(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
 
@@ -606,20 +630,20 @@
   // ============ 持仓（首页和记录页共用） ============
   var holding = { qqqShares: "", tqqqShares: "" };
   function loadHold() {
-    var h = load(HOLD_KEY);
+    var h = load(K().hold);
+    holding = { qqqShares: "", tqqqShares: "" };
     if (h && typeof h === "object") { holding = h; holding.qqqShares = h.qqqShares || ""; holding.tqqqShares = h.tqqqShares || ""; }
+    $("hQ").value = holding.qqqShares; $("hT").value = holding.tqqqShares; $("rQ").value = holding.qqqShares; $("rT").value = holding.tqqqShares;
+  }
+  function syncHold(q, t) {
+    holding.qqqShares = q; holding.tqqqShares = t;
+    $("hQ").value = q; $("hT").value = t; $("rQ").value = q; $("rT").value = t;
+    store(K().hold, holding);
+    renderHome();
   }
   function bindHold() {
-    loadHold();
-    function sync(q, t) {
-      holding.qqqShares = q; holding.tqqqShares = t;
-      $("hQ").value = q; $("hT").value = t; $("rQ").value = q; $("rT").value = t;
-      store(HOLD_KEY, holding);
-      renderHome();
-    }
-    sync(holding.qqqShares, holding.tqqqShares);
-    ["hQ", "hT"].forEach(function (id) { $(id).addEventListener("input", function () { sync($("hQ").value, $("hT").value); }); });
-    ["rQ", "rT"].forEach(function (id) { $(id).addEventListener("input", function () { sync($("rQ").value, $("rT").value); }); });
+    ["hQ", "hT"].forEach(function (id) { $(id).addEventListener("input", function () { syncHold($("hQ").value, $("hT").value); }); });
+    ["rQ", "rT"].forEach(function (id) { $(id).addEventListener("input", function () { syncHold($("rQ").value, $("rT").value); }); });
   }
 
   // ============ 本周怎么投 ============
@@ -631,43 +655,44 @@
     var b = st.buy, g = st.gap, h = st.hold;
     cache.home = st;
     var ddWord = cfg.basis === "ath" ? "历史高点" : "一年高点";
+    var n = N(), BASE = n.base, LEV = n.lev, IDX = n.short;
     $("hDate").textContent = "下一次定投 · " + cnMD(st.nextDate) + " " + st.weekdayName + " · 按 " + cnMD(st.basedOn) + " 收盘价判断";
 
     // 一句话结论
     var amt = moneyS(b.amount);
     var head, lede;
     if (b.asset === "TQQQ") {
-      head = "这周投 " + amt + "，买 TQQQ。";
-      lede = "纳指跌破 200 日均线 " + pctRaw(-g.maGap) + "，离" + ddWord + "跌了 " + pctRaw(g.ddNow) + "，两个条件都满足了，按规则加码到 " + mult(b.multiplier) + " 倍并改买 TQQQ" +
-        (cfg.flowShare < 100 ? "（其中 " + moneyS(b.tqqqAmount) + " 买 TQQQ，其余买 QQQ）" : "") + "。";
+      head = "这周投 " + amt + "，买 " + LEV + "。";
+      lede = IDX + "跌破 200 日均线 " + pctRaw(-g.maGap) + "，离" + ddWord + "跌了 " + pctRaw(g.ddNow) + "，两个条件都满足了，按规则加码到 " + mult(b.multiplier) + " 倍并改买 " + LEV +
+        (cfg.flowShare < 100 ? "（其中 " + moneyS(b.tqqqAmount) + " 买 " + LEV + "，其余买 " + BASE + "）" : "") + "。";
     } else if (b.state === "down") {
-      head = "这周多投一点：" + amt + "，买 QQQ。";
-      lede = "纳指跌破了 200 日均线 " + pctRaw(-g.maGap) + "，离" + ddWord + "跌了 " + pctRaw(g.ddNow) + "，还没到 " + cfg.dipThreshold + "%，所以加码到 " + mult(b.multiplier) + " 倍，但仍然买 QQQ。";
+      head = "这周多投一点：" + amt + "，买 " + BASE + "。";
+      lede = IDX + "跌破了 200 日均线 " + pctRaw(-g.maGap) + "，离" + ddWord + "跌了 " + pctRaw(g.ddNow) + "，还没到 " + cfg.dipThreshold + "%，所以加码到 " + mult(b.multiplier) + " 倍，但仍然买 " + BASE + "。";
     } else if (b.state === "hot") {
-      head = "这周少投一点：" + amt + "，买 QQQ。";
-      lede = "纳指比 200 日均线高 " + pctRaw(g.maGap) + "，涨得有点多，按规则只投 " + mult(b.multiplier) + " 倍。";
+      head = "这周少投一点：" + amt + "，买 " + BASE + "。";
+      lede = IDX + "比 200 日均线高 " + pctRaw(g.maGap) + "，涨得有点多，按规则只投 " + mult(b.multiplier) + " 倍。";
     } else {
-      head = "这周照常投 " + amt + "，买 QQQ。";
-      lede = (g.ddNow < 0.05 ? "纳指正处在" + ddWord.replace("高点", "最高点") : "纳指离" + ddWord + (g.ddNow < 3 ? "只差 " : "跌了 ") + pctRaw(g.ddNow)) +
+      head = "这周照常投 " + amt + "，买 " + BASE + "。";
+      lede = (g.ddNow < 0.05 ? IDX + "正处在" + ddWord.replace("高点", "最高点") : IDX + "离" + ddWord + (g.ddNow < 3 ? "只差 " : "跌了 ") + pctRaw(g.ddNow)) +
         (g.maGap == null ? "。" : "，在 200 日均线上方 " + pctRaw(g.maGap) + "，离「大跌」" + (g.ddNow < 10 ? "还很远" : "还有一段距离") + "。");
     }
     var sellAct = h && h.needSell;
-    if (sellAct) lede += " 你的 TQQQ 占到 " + h.tqqqShare.toFixed(1) + "%，超过目标，该卖掉约 " + h.sellShares.toFixed(2) + " 股。";
-    else if (st.sell.triggered && cfg.sellMode !== "none" && !h) lede += " 按你选的卖出方式，现在该减 TQQQ，下面填上持仓就能算出卖几股。";
-    else if (b.asset === "QQQ") lede += " TQQQ 不用买，也不用卖。";
+    if (sellAct) lede += " 你的 " + LEV + " 占到 " + h.tqqqShare.toFixed(1) + "%，超过目标，该卖掉约 " + h.sellShares.toFixed(2) + " 股。";
+    else if (st.sell.triggered && cfg.sellMode !== "none" && !h) lede += " 按你选的卖出方式，现在该减 " + LEV + "，下面填上持仓就能算出卖几股。";
+    else if (b.asset === "QQQ") lede += " " + LEV + " 不用买，也不用卖。";
     $("hHead").textContent = head;
     $("hLede").textContent = lede;
 
     // 三格
     $("tAmt").textContent = amt;
     $("tAmtS").textContent = "基础金额 " + moneyS(cfg.baseAmount) + " × " + mult(b.multiplier);
-    $("tAsset").textContent = b.asset;
+    $("tAsset").textContent = D(b.asset);
     $("tAsset").className = "v num " + (b.asset === "TQQQ" ? "t" : "q");
     $("tAssetS").textContent = "收盘价 " + money(b.asset === "TQQQ" ? st.tqqqPrice : st.close, true);
     if (cfg.sellMode === "none") { $("tSell").textContent = "不卖"; $("tSellS").textContent = "你选了完全不卖（危险）"; }
-    else if (sellAct) { $("tSell").textContent = "卖 " + h.sellShares.toFixed(2) + " 股"; $("tSellS").textContent = "约 " + money(h.sellAmount) + "，换成 QQQ"; }
+    else if (sellAct) { $("tSell").textContent = "卖 " + h.sellShares.toFixed(2) + " 股"; $("tSellS").textContent = "约 " + money(h.sellAmount) + "，换成 " + BASE; }
     else if (st.sell.triggered && !h) { $("tSell").textContent = "该减了"; $("tSellS").textContent = "填上持仓算具体股数"; }
-    else { $("tSell").textContent = "不用"; $("tSellS").textContent = cfg.sellMode === "cap" ? "只在超过 " + cfg.tqqqCap + "% 上限时卖" : st.sell.note; }
+    else { $("tSell").textContent = "不用"; $("tSellS").textContent = cfg.sellMode === "cap" ? "只在超过 " + cfg.tqqqCap + "% 上限时卖" : nmText(st.sell.note); }
     $("tSell").style.color = sellAct ? "var(--t-ink)" : "";
 
     // 两个条件
@@ -696,31 +721,31 @@
       d.appendChild(el("span", "num" + (tq && !now ? " tq" : ""), right));
       lad.appendChild(d);
     }
-    rowL("比均线高 ≥ " + cfg.hotAbove + "%（涨太多）", "× " + mult(cfg.hotMultiplier) + " · QQQ", b.state === "hot");
-    rowL("均线上方", "× 1 · QQQ", b.state === "up" || b.state === "dip");
+    rowL("比均线高 ≥ " + cfg.hotAbove + "%（涨太多）", "× " + mult(cfg.hotMultiplier) + " · " + BASE, b.state === "hot");
+    rowL("均线上方", "× 1 · " + BASE, b.state === "up" || b.state === "dip");
     var tiers = cfg.tiers, curTier = -1;
     if (b.state === "down") for (var k = 0; k < tiers.length; k++) if (g.ddNow >= tiers[k].drawdown) curTier = k;
     tiers.forEach(function (t, i) {
       var tq = t.drawdown >= cfg.dipThreshold;
-      rowL(i === 0 ? "跌破均线" : "跌破均线，离高点 ≥ " + t.drawdown + "%", "× " + mult(t.multiplier) + " · " + (tq ? "TQQQ" : "QQQ"), i === curTier, tq);
+      rowL(i === 0 ? "跌破均线" : "跌破均线，离高点 ≥ " + t.drawdown + "%", "× " + mult(t.multiplier) + " · " + (tq ? LEV : BASE), i === curTier, tq);
     });
     var bounds = tiers.map(function (t) { return t.drawdown; });
     if (bounds.indexOf(cfg.dipThreshold) < 0) {
-      var d0 = el("div"); d0.appendChild(el("span", null, "离高点 ≥ " + cfg.dipThreshold + "% 起，同一档里的钱改买 TQQQ")); d0.appendChild(el("span", "tq", "TQQQ")); lad.appendChild(d0);
+      var d0 = el("div"); d0.appendChild(el("span", null, "离高点 ≥ " + cfg.dipThreshold + "% 起，同一档里的钱改买 " + LEV)); d0.appendChild(el("span", "tq", LEV)); lad.appendChild(d0);
     }
 
     // 持仓结果
     var res = $("holdRes");
     res.className = "res";
-    if (!h || !(h.total > 0)) { res.textContent = "填上股数，就告诉你 TQQQ 占多少、要不要卖几股。只存在你的浏览器里。"; return; }
+    if (!h || !(h.total > 0)) { res.textContent = "填上股数，就告诉你 " + LEV + " 占多少、要不要卖几股。只存在你的浏览器里。"; return; }
     res.textContent = "";
-    res.appendChild(document.createTextNode("组合 " + money(h.total) + "，TQQQ 占 "));
+    res.appendChild(document.createTextNode("组合 " + money(h.total) + "，" + LEV + " 占 "));
     res.appendChild(el("b", "num", h.tqqqShare.toFixed(1) + "%"));
     if (cfg.sellMode === "none") res.appendChild(document.createTextNode("。你选了完全不卖，所以不提醒卖出。"));
     else if (h.needSell) {
       res.className = "res sell";
       res.appendChild(document.createTextNode("，超过目标 " + h.targetShare.toFixed(0) + "%。"));
-      res.appendChild(el("b", null, "卖掉约 " + h.sellShares.toFixed(2) + " 股 TQQQ（约 " + money(h.sellAmount) + "）换成 QQQ"));
+      res.appendChild(el("b", null, "卖掉约 " + h.sellShares.toFixed(2) + " 股 " + LEV + "（约 " + money(h.sellAmount) + "）换成 " + BASE));
       res.appendChild(document.createTextNode("，就回到 " + h.targetShare.toFixed(0) + "%。"));
     } else res.appendChild(document.createTextNode("（上限 " + cfg.tqqqCap + "%），不用动。"));
   }
@@ -736,17 +761,19 @@
     if (!plain || !dip || !lever) return;
     var per = cfg.frequency === "daily" ? "每个交易日" : "每周";
     $("btTitle").textContent = per + "投 " + moneyS(cfg.baseAmount) + "，从 " + $("btYear").value + " 年投到今天";
+    var n = N(), BASE = n.base, LEV = n.lev;
     var dx = (dip.xirr - plain.xirr) * 100;
-    var lede = "大跌才买 TQQQ 年化" + (dx >= 0 ? "多赚 " : "少赚 ") + Math.abs(dx).toFixed(1) + " 个点";
-    if (dip.worstRatio < plain.worstRatio - 0.005) lede += "，代价是最难的时候亏得更深：" + cnYM(dip.worstRatioDate) + "账户只剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%（只买 QQQ 是 " + (plain.worstRatio * 100).toFixed(0) + "%）。";
-    else lede += "，最难的时候账户剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%，只买 QQQ 是 " + (plain.worstRatio * 100).toFixed(0) + "%。";
+    var lede = "大跌才买 " + LEV + " 年化" + (dx >= 0 ? "多赚 " : "少赚 ") + Math.abs(dx).toFixed(1) + " 个点";
+    if (dip.worstRatio < plain.worstRatio - 0.005) lede += "，代价是最难的时候亏得更深：" + cnYM(dip.worstRatioDate) + "账户只剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%（只买 " + BASE + " 是 " + (plain.worstRatio * 100).toFixed(0) + "%）。";
+    else lede += "，最难的时候账户剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%，只买 " + BASE + " 是 " + (plain.worstRatio * 100).toFixed(0) + "%。";
     var yrs = Math.max(1, Math.round((s.day[plain.lastIdx] - s.day[plain.firstIdx]) / 365.25));
     $("btLede").textContent = lede + " 按下面的播放键，看这 " + yrs + " 年账户是怎么一周周变过来的。";
     if ($("pStartText").textContent.indexOf("再看") < 0) $("pStartText").textContent = "播放 " + yrs + " 年回放";
+    $("pSvg").setAttribute("aria-label", "三种做法的账户市值随时间变化（" + n.index + "）");
 
     var rows = [
-      { r: plain, name: "只买 QQQ", color: COLORS.plain },
-      { r: dip, name: "大跌才买 TQQQ（你的规则）", color: COLORS.dip, mine: true },
+      { r: plain, name: "只买 " + BASE, color: COLORS.plain },
+      { r: dip, name: "大跌才买 " + LEV + "（你的规则）", color: COLORS.dip, mine: true },
       { r: lever, name: "对照：按风险调杠杆", color: COLORS.lever, dim: true },
     ];
     var tb = $("btTable").tBodies[0]; tb.textContent = "";
@@ -767,7 +794,7 @@
     if (diffs.length) {
       var avg = diffs.reduce(function (p, q) { return p + q; }, 0) / diffs.length;
       var win = diffs.filter(function (d) { return d > 0; }).length, worst = Math.min.apply(null, diffs);
-      $("rollText").textContent = "任选 10 年（共 " + diffs.length + " 段），平均比只买 QQQ " + (avg >= 0 ? "高 " : "低 ") + Math.abs(avg).toFixed(1) + " 个点，" + win +
+      $("rollText").textContent = "任选 10 年（共 " + diffs.length + " 段），平均比只买 " + BASE + " " + (avg >= 0 ? "高 " : "低 ") + Math.abs(avg).toFixed(1) + " 个点，" + win +
         " 段更高；最差一段（" + years[diffs.indexOf(worst)] + " 年起）" + (worst >= 0 ? "也高 " : "低 ") + Math.abs(worst).toFixed(1) + " 个点。";
     } else $("rollText").textContent = "数据还不够算 10 年一段。";
     $("cmpText").textContent = "按风险调杠杆（波动率目标 30%）年化 " + pct(lever.xirr, 1) + "、最惨时剩 " + (lever.worstRatio * 100).toFixed(0) +
@@ -777,10 +804,16 @@
   }
 
   // ============ 回放（数据变化演示） ============
-  var EVENTS = [
-    { d: "2000-03-10", t: "科网泡沫见顶" }, { d: "2002-10-09", t: "纳指跌到谷底" }, { d: "2008-09-15", t: "雷曼兄弟倒闭" },
-    { d: "2020-03-16", t: "疫情暴跌" }, { d: "2022-01-03", t: "加息熊市开始" },
-  ];
+  var EVENTS_BY_PLAN = {
+    nasdaq: [
+      { d: "2000-03-10", t: "科网泡沫见顶" }, { d: "2002-10-09", t: "纳指跌到谷底" }, { d: "2008-09-15", t: "雷曼兄弟倒闭" },
+      { d: "2020-03-16", t: "疫情暴跌" }, { d: "2022-01-03", t: "加息熊市开始" },
+    ],
+    sp500: [
+      { d: "1998-08-31", t: "亚洲金融危机" }, { d: "2000-03-24", t: "科网泡沫见顶" }, { d: "2002-10-09", t: "标普跌到谷底" },
+      { d: "2008-09-15", t: "雷曼兄弟倒闭" }, { d: "2020-03-16", t: "疫情暴跌" }, { d: "2022-01-03", t: "加息熊市开始" },
+    ],
+  };
   var player = (function () {
     var rows = null, n = 0, pos = 1, playing = false, raf = 0, last = 0, yMax = 1, started = false, hover = -1;
     var svg = $("pSvg"), W = 900, H = 300, L = 56, R = 12, T = 18, B = 26;
@@ -823,7 +856,7 @@
       }
       // 大事件
       var evNow = "";
-      EVENTS.forEach(function (ev) {
+      (EVENTS_BY_PLAN[state.plan] || []).forEach(function (ev) {
         var ei = -1;
         for (var q = 0; q < n; q += 1) if (s.dates[f0 + q] >= ev.d) { ei = q; break; }
         if (ei < 0 || ei > shownTo) return;
@@ -890,7 +923,9 @@
       hover = i < 0 || i > idx() ? -1 : i; draw();
     });
     $("pChart").addEventListener("pointerleave", function () { if (hover >= 0) { hover = -1; draw(); } });
-    return { setData: setData, draw: draw };
+    // 换计划时回到「还没播放」的状态
+    function reset() { if (playing) { playing = false; cancelAnimationFrame(raf); icon(false); } started = false; pos = 1; hover = -1; $("pCover").hidden = false; $("pStartText").textContent = "播放"; }
+    return { setData: setData, draw: draw, reset: reset };
   })();
 
   // ============ 板块热度 ============
@@ -1045,19 +1080,25 @@
 
   // ============ 我的记录 ============
   var trades = [];
-  function saveTrades() { store(TRADES_KEY, trades); }
+  function saveTrades() { store(K().trades, trades); }
+  function loadTrades() {
+    var v = load(K().trades);
+    trades = Array.isArray(v) ? v.filter(function (t) { return t && t.date; }) : [];
+    var s = state.series;
+    $("jDate").value = s.dates[s.n - 1];
+    $("jBox").hidden = true; $("jAmount").value = ""; $("jPrice").value = "";
+  }
   function jMsg(t) { $("jMsg").textContent = t || ""; if (t) setTimeout(function () { if ($("jMsg").textContent === t) $("jMsg").textContent = ""; }, 4000); }
-  function backupText() { return DCA.formatTradesBackup(trades, { today: new Date().toISOString().slice(0, 10), siteUrl: SITE_URL }); }
+  function backupText() {
+    var n = N();
+    return DCA.formatTradesBackup(trades, { today: new Date().toISOString().slice(0, 10), siteUrl: SITE_URL, plan: state.plan, planName: n.index, names: n });
+  }
   function mailHref(to, bk) { return "mailto:" + encodeURIComponent(to) + "?subject=" + encodeURIComponent(bk.subject) + "&body=" + encodeURIComponent(bk.body); }
   function boxMode(importing) {
     $("jBox").hidden = false;
     $("jDoImport").hidden = !importing; $("jCopy").hidden = importing; $("jMail").hidden = importing; $("jMailField").hidden = importing;
   }
   function bindJournal() {
-    var v = load(TRADES_KEY);
-    if (Array.isArray(v)) trades = v.filter(function (t) { return t && t.date; });
-    var s = state.series;
-    $("jDate").value = s.dates[s.n - 1];
     $("jAsset").addEventListener("change", fillPrice);
     $("jDate").addEventListener("change", fillPrice);
     $("jAdd").addEventListener("click", function () {
@@ -1088,6 +1129,10 @@
     $("jDoImport").addEventListener("click", function () {
       var list;
       try { list = DCA.parseTradesBackup($("jText").value); } catch (e) { return jMsg("导入失败：" + e.message); }
+      if (list.plan !== state.plan) {
+        var other = DCA.planNames(list.plan).index;
+        return jMsg("这是" + other + "计划的备份，先在页面最上面切到「" + other + "」再导入");
+      }
       var seen = {}, added = 0;
       trades.forEach(function (t) { seen[t.date + "|" + DCA.assetOf(t.asset) + "|" + t.amount + "|" + t.price] = 1; });
       list.forEach(function (t) {
@@ -1119,7 +1164,7 @@
       fillPrice();
       showTab("records", true);
       $("jPrice").focus();
-      jMsg(split ? "这次分两笔：先记 TQQQ " + moneyS(b.tqqqAmount) + "，再把剩下的 " + moneyS(b.amount - b.tqqqAmount) + " 记成 QQQ" : "填好了，改一下成交价再点「记一笔」");
+      jMsg(split ? "这次分两笔：先记 " + N().lev + " " + moneyS(b.tqqqAmount) + "，再把剩下的 " + moneyS(b.amount - b.tqqqAmount) + " 记成 " + N().base : "填好了，改一下成交价再点「记一笔」");
     });
   }
   function fillPrice() {
@@ -1128,7 +1173,7 @@
     var px = a === "TQQQ" ? s.t[idx] : s.close[idx];
     if (px > 0) $("jPrice").placeholder = px.toFixed(2);
     var sug = DCA.suggestionForDate(s, state.cfg, d, { dd: cache.dd, tl: cache.tl });
-    $("jHint").textContent = sug ? cnDate(sug.date) + " 规则说：投 " + moneyS(sug.amount) + " 买 " + sug.asset + "。成交价不填就按收盘价算。" : "成交价不填就按当天收盘价算。";
+    $("jHint").textContent = sug ? cnDate(sug.date) + " 规则说：投 " + moneyS(sug.amount) + " 买 " + D(sug.asset) + "。成交价不填就按收盘价算。" : "成交价不填就按当天收盘价算。";
   }
   function kpi(host, k, v, s2) { var d = el("div", "kpi"); d.appendChild(el("span", "k", k)); d.appendChild(el("span", "v num", v)); if (s2) d.appendChild(el("span", "s", s2)); host.appendChild(d); }
   function renderJournal() {
@@ -1145,11 +1190,11 @@
     r.rows.slice().reverse().forEach(function (row) {
       var tr = el("tr");
       tr.appendChild(el("td", "num", row.date));
-      var td1 = el("td"); td1.appendChild(el("span", "tag " + (row.asset === "TQQQ" ? "t" : row.asset === "SPY" ? "s" : ""), row.asset)); if (row.note) td1.appendChild(el("span", "sub", row.note)); tr.appendChild(td1);
+      var td1 = el("td"); td1.appendChild(el("span", "tag " + (row.asset === "TQQQ" ? "t" : row.asset === "SPY" ? "s" : ""), D(row.asset))); if (row.note) td1.appendChild(el("span", "sub", row.note)); tr.appendChild(td1);
       tr.appendChild(el("td", "num", money(row.amount, true)));
       tr.appendChild(el("td", "num", money(row.price, true)));
       tr.appendChild(el("td", "num", row.shares.toFixed(3)));
-      tr.appendChild(el("td", null, row.suggested == null ? "—" : moneyS(row.suggested) + " 买 " + row.suggestedAsset));
+      tr.appendChild(el("td", null, row.suggested == null ? "—" : moneyS(row.suggested) + " 买 " + D(row.suggestedAsset)));
       var tdx = el("td"), del = el("button", "link", "删掉"); del.type = "button";
       del.setAttribute("aria-label", "删掉 " + row.date + " 这笔");
       del.addEventListener("click", function () { trades = trades.filter(function (t) { return t.id !== row.id; }); saveTrades(); renderJournal(); jMsg("删掉了"); });
@@ -1182,7 +1227,7 @@
   }
   function commit() {
     state.cfg = DCA.withDefaults(state.cfg);
-    store(CFG_KEY, state.cfg);
+    store(K().cfg, state.cfg);
     fillSettings(); renderAll();
   }
   function bindSettings() {
@@ -1206,16 +1251,30 @@
   function renderFacts() {
     var s = state.series, box = $("facts"); box.textContent = "";
     function add(t, d) { var dv = el("div"); dv.appendChild(el("b", null, t)); dv.appendChild(el("span", null, d)); box.appendChild(dv); }
-    var pk = 0, worst = 0;
-    for (var i = 0; i < s.n; i++) { if (s.t[i] > pk) pk = s.t[i]; if (pk > 0) worst = Math.min(worst, s.t[i] / pk - 1); }
-    add("TQQQ 只能当加码工具，不能长拿",
-      "1999 年一次性买入拿到今天，TQQQ 只有 " + (s.t[s.n - 1] / s.t[0]).toFixed(1) + " 倍，同期 QQQ 是 " + (s.adj[s.n - 1] / s.adj[0]).toFixed(1) +
-      " 倍——2000 年到 2009 年它最多跌掉 " + (Math.abs(worst) * 100).toFixed(2) + "%。所以一定要有占比上限。");
+    var n = N(), BASE = n.base, LEV = n.lev, y0 = s.dates[0].slice(0, 4);
+    var years = Math.round((s.day[s.n - 1] - s.day[0]) / 365.25);
+    function worstOf(arr) {
+      var pk = 0, pkD = "", w = 0, a = "", b = "";
+      for (var i = 0; i < s.n; i++) { if (arr[i] > pk) { pk = arr[i]; pkD = s.dates[i]; } var d = arr[i] / pk - 1; if (d < w) { w = d; a = pkD; b = s.dates[i]; } }
+      return { dd: -w * 100, from: a.slice(0, 4), to: b.slice(0, 4) };
+    }
+    var wl = worstOf(s.t), wb = worstOf(s.adj), xl = s.t[s.n - 1] / s.t[0], xb = s.adj[s.n - 1] / s.adj[0];
+    add(LEV + " 只能当加码工具，不能长拿",
+      xl < xb
+        ? y0 + " 年一次性买入拿到今天，" + LEV + " 只有 " + xl.toFixed(1) + " 倍，同期 " + BASE + " 是 " + xb.toFixed(1) +
+          " 倍——" + wl.from + " 年到 " + wl.to + " 年它最多跌掉 " + wl.dd.toFixed(2) + "%。所以一定要有占比上限。"
+        : wl.from + " 年到 " + wl.to + " 年，" + LEV + " 最多跌掉 " + wl.dd.toFixed(1) + "%（同期 " + BASE + " 最多跌 " + wb.dd.toFixed(0) + "%）。" +
+          "从 " + y0 + " 年拿到今天它虽然涨了 " + xl.toFixed(0) + " 倍、比 " + BASE + " 的 " + xb.toFixed(0) + " 倍多，但跌掉九成多的时候几乎没人拿得住，所以一定要有占比上限。");
     var dip = DCA.backtest(s, state.cfg, { mode: "dip", dd: cache.dd, tl: cache.tl }), plain = DCA.backtest(s, state.cfg, { mode: "plainQ", dd: cache.dd, tl: cache.tl });
     if (dip && plain) add("最难的时候，账户只剩投入的 " + (dip.worstRatio * 100).toFixed(0) + "%",
-      "发生在 " + cnYM(dip.worstRatioDate) + "；市值最长连续 " + dip.underwaterYears.toFixed(1) + " 年低于投入。只买 QQQ 是 " + (plain.worstRatio * 100).toFixed(0) + "%。这是最容易放弃的时候。");
-    add("2010 年以前的 TQQQ 是模拟的", "TQQQ 2010 年 2 月才成立。之前的价格按「QQQ 日涨跌 × 3 − 杠杆成本」推算，系数用 2010 年以后的真实数据拟合。");
-    add("没算的成本，以及这不是投资建议", "手续费、换汇、分红预扣税都没算，卖出还可能要交税。过去 27 年是科技股大牛市，以后不一定这样。");
+      "发生在 " + cnYM(dip.worstRatioDate) + "；市值最长连续 " + (dip.underwaterYears >= 1 ? dip.underwaterYears.toFixed(1) + " 年" : "约 " + Math.max(1, Math.round(dip.underwaterYears * 12)) + " 个月") + "低于投入。只买 " + BASE + " 是 " + (plain.worstRatio * 100).toFixed(0) + "%。这是最容易放弃的时候。");
+    var fr = s.firstRealIdx >= 0 ? s.dates[s.firstRealIdx] : null;
+    if (fr) add(fr.slice(0, 4) + " 年以前的 " + LEV + " 是模拟的", LEV + " " + cnYM(fr) + "才成立。之前的价格按「" + (state.plan === "sp500" ? "SPY" : BASE) +
+      " 日涨跌 × 3 − 杠杆成本」推算，系数用成立以后的真实数据拟合。");
+    if (state.plan === "sp500") add("信号和回测用 SPY 算", "VOO " + cnYM((state.data && state.data.firstRealBase) || "2010-09-09") +
+      "才有，所以均线、回撤和 " + years + " 年回测都用跟踪同一个指数的 SPY（1993 年就有）。两者走势几乎一样，VOO 每年费用低 0.06%。页面上的价格和记账用 VOO 的真实收盘价。");
+    add("没算的成本，以及这不是投资建议", "手续费、换汇、分红预扣税都没算，卖出还可能要交税。" +
+      (state.plan === "sp500" ? "过去 " + years + " 年美股整体涨得很好，以后不一定这样。" : "过去 " + years + " 年是科技股大牛市，以后不一定这样。"));
   }
 
   // ============ 总渲染 ============
@@ -1228,39 +1287,95 @@
   }
   function fillYears() {
     var s = state.series, first = +s.dates[0].slice(0, 4), last = +s.dates[s.n - 1].slice(0, 4), sel = $("btYear");
+    sel.textContent = "";
     for (var y = first; y <= last - 3; y++) { var o = el("option", null, y + " 年"); o.value = y; sel.appendChild(o); }
     sel.value = String(first);
-    sel.addEventListener("change", renderBacktest);
   }
-  function init(data) {
+  // 页面上写死的代码（QQQ / TQQQ）换成当前计划的
+  function applyNames() {
+    var n = N();
+    Array.prototype.forEach.call(document.querySelectorAll(".nm-base"), function (e) { e.textContent = n.base; });
+    Array.prototype.forEach.call(document.querySelectorAll(".nm-lev"), function (e) { e.textContent = n.lev; });
+    $("brandName").textContent = K().brand;
+    document.title = K().brand;
+    Array.prototype.forEach.call($("planSw").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", b.dataset.plan === state.plan ? "true" : "false"); });
+  }
+  var bound = false;
+  // 拿到一个计划的数据后，把整页换成这个计划
+  function applyPlan(plan, data) {
     var s = DCA.prepare(data);
-    if (!s.n) { $("empty").hidden = false; $("meta").textContent = ""; return; }
-    state.series = s;
-    var saved = load(CFG_KEY);
-    if (saved && typeof saved === "object") state.cfg = DCA.withDefaults(saved);
+    if (!s.n) return false;
+    state.plan = plan; state.series = s; state.data = data; cache = {};
+    var saved = load(K().cfg);
+    state.cfg = DCA.withDefaults(saved && typeof saved === "object" ? saved : {});
+    try { localStorage.setItem(PLAN_KEY, plan); } catch (e) { /* 忽略 */ }
+    applyNames();
+    $("empty").hidden = true;
     var last = s.dates[s.n - 1];
     $("meta").textContent = "行情更新到 " + cnMD(last) + " · 美东收盘";
     var lag = Math.round(Date.now() / DCA.DAY_MS) - DCA.dayNumber(last);
-    if (lag > 5) { $("notice").textContent = "行情停在 " + cnDate(last) + "，已经 " + lag + " 天没更新了，去 GitHub 仓库的 Actions 页面看看自动更新是不是失败了。"; $("notice").hidden = false; }
-    $("footData").textContent = "数据来源 " + (data.source || "Yahoo Finance") + "，" + s.dates[0] + " 至 " + last + "，每个美股交易日收盘后自动更新。";
-    fillYears(); fillSettings(); bindSettings(); bindHold(); bindJournal();
+    $("notice").hidden = !(lag > 5);
+    if (lag > 5) $("notice").textContent = s.names.index + " 的行情停在 " + cnDate(last) + "，已经 " + lag + " 天没更新了，去 GitHub 仓库的 Actions 页面看看自动更新是不是失败了。";
+    $("footData").textContent = s.names.index + " 数据来源 " + (data.source || "Yahoo Finance") + "，" + s.dates[0] + " 至 " + last + "，每个美股交易日收盘后自动更新。";
+    fillYears(); fillSettings(); loadHold(); loadTrades();
+    if (!bound) {
+      bound = true;
+      bindSettings(); bindHold(); bindJournal();
+      $("btYear").addEventListener("change", renderBacktest);
+      var lastW = 0, timer = null;
+      new ResizeObserver(function (en) {
+        var w = Math.round(en[0].contentRect.width);
+        if (w === lastW) return; lastW = w;
+        clearTimeout(timer); timer = setTimeout(function () { player.draw(); }, 100);
+      }).observe($("pChart"));
+    }
+    player.reset();
     renderAll();
-    showTab(location.hash.slice(1));
-    var lastW = 0, timer = null;
-    new ResizeObserver(function (en) {
-      var w = Math.round(en[0].contentRect.width);
-      if (w === lastW) return; lastW = w;
-      clearTimeout(timer); timer = setTimeout(function () { player.draw(); }, 100);
-    }).observe($("pChart"));
+    return true;
   }
+  var dataCache = {};
+  function getData(plan) {
+    if (dataCache[plan]) return Promise.resolve(dataCache[plan]);
+    return fetch(PLAN_DEF[plan].file, { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (d) { dataCache[plan] = d; return d; });
+  }
+  function switchPlan(plan) {
+    if (!PLAN_DEF[plan] || (plan === state.plan && state.series)) return;
+    var btns = $("planSw").querySelectorAll("button");
+    Array.prototype.forEach.call(btns, function (b) { b.disabled = true; });
+    getData(plan)
+      .then(function (d) { if (!applyPlan(plan, d)) throw new Error("没有数据"); })
+      .catch(function (e) {
+        $("notice").textContent = DCA.planNames(plan).index + " 的行情暂时读不到（" + e.message + "），先看着" + N().index + "，稍后再试。";
+        $("notice").hidden = false;
+        applyNames();
+      })
+      .then(function () { Array.prototype.forEach.call(btns, function (b) { b.disabled = false; }); });
+  }
+  Array.prototype.forEach.call($("planSw").querySelectorAll("button"), function (b) {
+    b.addEventListener("click", function () { switchPlan(b.dataset.plan); });
+  });
+
   showTab(location.hash.slice(1));
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () { /* 离线功能可有可无 */ }); });
   }
-  fetch("data.json", { cache: "no-cache" })
-    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(init)
-    .catch(function (e) { $("empty").hidden = false; $("meta").textContent = "读取行情失败：" + e.message; });
+  // 先打开哪个计划：链接里的 ?plan= ＞ 上次看的 ＞ 纳指100
+  var startPlan = (location.search.match(/[?&]plan=(nasdaq|sp500)\b/) || [])[1];
+  if (!startPlan) { try { startPlan = localStorage.getItem(PLAN_KEY); } catch (e) { /* 忽略 */ } }
+  if (!PLAN_DEF[startPlan]) startPlan = "nasdaq";
+  function boot(plan) {
+    state.plan = plan; applyNames();
+    return getData(plan).then(function (d) {
+      if (!applyPlan(plan, d)) throw new Error("没有数据");
+      showTab(location.hash.slice(1));
+    });
+  }
+  boot(startPlan).catch(function (e) {
+    if (startPlan !== "nasdaq") return boot("nasdaq").catch(function (e2) { $("empty").hidden = false; $("meta").textContent = "读取行情失败：" + e2.message; });
+    $("empty").hidden = false; $("meta").textContent = "读取行情失败：" + e.message;
+  });
 })();
 </script>
 </body>
